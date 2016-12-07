@@ -1,6 +1,7 @@
 Yii2 RAD Tools
 ==============
-Rapid Application Development tools to quickly build interconnected crud UI. Uses yii2-ajaxcrud to generate the pop-up forms and kartik-v Grid.
+Rapid Application Development tools to quickly build interconnected crud UI's. 
+It uses yii2-ajaxcrud to generate the pop-up forms and optionally kartik-v/Dynagrid for the Gridview.
 
 Installation
 ------------
@@ -25,7 +26,47 @@ to the require section of your `composer.json` file.
 Usage
 -----
 
-Once the extension is installed, simply use it in your code by  :
+Once the extension is installed, simple extend from BaseAjaxCrudController and add settings:
 
 ```php
-<?= \drsdre\radtools\AutoloadExample::widget(); ?>```
+class UserController extends drsdre\radtools\BaseAjaxCrudController
+{
+    protected $useDynagrid = true;
+    protected $modelClass = 'app\models\UserForm';
+    protected $searchModelClass ='app\models\search\UserSearch';
+    protected $model_name = 'User';
+    protected $model_field_name = 'username';
+```
+
+To use hierarchy links, include the HierarchyLinkTrait (it requires the controller to be extended from BaseAjaxCrudController):
+```php
+class TableController extends drsdre\radtools\BaseAjaxCrudController
+{   
+    protected $useDynagrid = true;
+    protected $modelClass = 'app\models\UserForm';
+    protected $searchModelClass ='app\models\search\UserSearch';
+    protected $model_name = 'User';
+    protected $model_field_name = 'username';
+        
+   use drsdre\radtools\HierarchyLinkController;
+
+   protected $hierarchy_links = [
+    		'user_id' => [
+    			'model' => 'app\models\User',
+    			'linked_model' => 'user',
+    			'breadcrumbs' => [
+    				[
+    					'label' => 'Users',
+    					'url' => '/user/overview',
+    				],
+    				[
+    					'label' => '{model_name}',
+    					'name_field' => 'username',
+    					'url' => '/user/view?id={id}',
+    				]
+    			]
+    		]
+    	];
+```
+
+TODO add explanations for the parameters.

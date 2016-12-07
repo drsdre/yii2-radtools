@@ -1,6 +1,6 @@
 <?php
 /**
- * Hierachy Link Controller
+ * Hierachy Link Trait
  * Provides a linking mechanism between related tables through the GET parameter hierarchy_filter[link_variable]=link_id.
  * Should be side loaded in class through 'use drsdre\radtools\HierarchyLinkController.
  *
@@ -13,7 +13,7 @@ namespace drsdre\radtools;
 use yii;
 use yii\db\ActiveRecord;
 
-trait HierarchyLinkController {
+trait HierarchyLinkTrait {
 
 	static $link_session_key = 'HierarchyLink';
 
