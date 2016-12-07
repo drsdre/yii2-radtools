@@ -93,9 +93,9 @@ trait HierarchyLinkTrait {
 	/**
 	 * @inheritdoc
 	 */
-	protected function IndexDataProvider($searchModel) {
+	protected function indexDataProvider($searchModel) {
 
-		$dataProvider = parent::IndexDataProvider($searchModel);
+		$dataProvider = parent::indexDataProvider($searchModel);
 
 		if (!isset($this->hierarchy_links)) {
 			return $dataProvider;
@@ -193,7 +193,7 @@ trait HierarchyLinkTrait {
 	 *
 	 * @param array $additional_breadcrumbs
 	 */
-	public function AddBreadCrumbs($additional_breadcrumbs = []) {
+	public function addBreadCrumbs($additional_breadcrumbs = []) {
 		// Gather breadcrumbs for all linked models
 		foreach($this->getLinkedModels() as $filter_variable => $model) {
 			if (!isset($this->hierarchy_links[$filter_variable]['breadcrumbs']) || is_null($model)) {
