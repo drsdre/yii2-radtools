@@ -1,0 +1,23 @@
+{
+    "name": "drsdre/yii2-radtools",
+    "description": "Rapid Application Development tools to quickly build interconnected crud UI. Uses yii2-ajaxcrud to generate the pop-up forms and kartik-v Grid.",
+    "type": "yii2-extension",
+    "keywords": ["yii2","extension","rad","crud","ajaxcrud","ajax","hierarchy"],
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "A.F.Schuurman",
+            "email": "andre.schuurman_yii2radtools@gmail.com"
+        }
+    ],
+    "require": {
+        "yiisoft/yii2": "*",
+        "johnitvn/yii2-ajaxcrud": "~2.1.3",
+        "kartik-v/yii2-dynagrid": "~1.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "drsdre\\radtools\\": ""
+        }
+    }
+}
