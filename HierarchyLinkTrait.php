@@ -84,7 +84,7 @@ trait HierarchyLinkTrait {
 		}
 
 		// Add debugging
-			Yii::trace($session->get(self::$link_session_key), 'frontend\components\HierarchyLinkBehavior::parseLinks');
+			Yii::trace($session->get(self::$link_session_key), 'drsdre\radtools\HierarchyLinkTrait::parseLinks');
 
 		// Make linked models avaiable in the view
 		$this->view->params['hierarchy_records'] = $this->getLinkedModels();
