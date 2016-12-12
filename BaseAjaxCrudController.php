@@ -231,7 +231,7 @@ class BaseAjaxCrudController extends Controller {
 			$this->model->{$this->model_field_name}
 		]);
 
-		if ( $request->isAjax ) {
+		if ( $request->isAjax && ! $request->isPjax  ) {
 			// Ajax request
 			Yii::$app->response->format = Response::FORMAT_JSON;
 
@@ -305,7 +305,7 @@ class BaseAjaxCrudController extends Controller {
 			Yii::t('app', 'Create')
 		]);
 
-		if ( $request->isAjax ) {
+		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			Yii::$app->response->format = Response::FORMAT_JSON;
 
@@ -374,7 +374,7 @@ class BaseAjaxCrudController extends Controller {
 			Yii::t('app', 'Copy')
 		]);
 
-		if ( $request->isAjax ) {
+		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			Yii::$app->response->format = Response::FORMAT_JSON;
 
@@ -465,7 +465,7 @@ class BaseAjaxCrudController extends Controller {
 			Yii::t('app', 'Update')
 		]);
 
-		if ( $request->isAjax ) {
+		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			Yii::$app->response->format = Response::FORMAT_JSON;
 
@@ -613,7 +613,7 @@ class BaseAjaxCrudController extends Controller {
 			}
 		}
 
-		if ( $request->isAjax ) {
+		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			Yii::$app->response->format = Response::FORMAT_JSON;
 
