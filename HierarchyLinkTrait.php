@@ -12,6 +12,7 @@ namespace drsdre\radtools;
 
 use yii;
 use yii\db\ActiveRecord;
+use yii\helpers\ArrayHelper;
 
 trait HierarchyLinkTrait {
 
@@ -84,7 +85,7 @@ trait HierarchyLinkTrait {
 		}
 
 		// Add debugging
-			Yii::trace($session->get(self::$link_session_key), 'drsdre\radtools\HierarchyLinkTrait::parseLinks');
+		Yii::trace($session->get(self::$link_session_key), 'drsdre\radtools\HierarchyLinkTrait::parseLinks');
 
 		// Make linked models avaiable in the view
 		$this->view->params['hierarchy_records'] = $this->getLinkedModels();
@@ -179,7 +180,7 @@ trait HierarchyLinkTrait {
 			if (isset($this->hierarchy_filters[$filter_variable])) {
 				// Add the record which matches the filter
 				$this->hierarchy_records[$filter_variable] = $filter_model['model']::findOne($this->hierarchy_filters[$filter_variable]);
-			// Check if linked model is available linked to main model
+				// Check if linked model is available linked to main model
 			} elseif ($current_model && $current_model->$filter_model['linked_model']) {
 				// Add the linked record to main model
 				$this->hierarchy_records[$filter_variable] = $current_model->$filter_model['linked_model'];
@@ -234,7 +235,7 @@ trait HierarchyLinkTrait {
 							if (count($replacement) > 0) {
 								// Replace reference '{<fieldname>}' with value from model
 								$breadcrumb['url'] = strtr($breadcrumb['url'],
-									[$replacements[0][$key] => $model->{$replacements[1][$key]}]);
+									[$replacements[0][$key] => ArrayHelper::getValue($model, $replacements[1][$key])]);
 							}
 						}
 					}

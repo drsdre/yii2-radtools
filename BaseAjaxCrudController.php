@@ -16,6 +16,7 @@ use yii\web\NotFoundHttpException;
 use yii\helpers\Html;
 use yii\web\Response;
 use yii\helpers\Json;
+use yii\helpers\ArrayHelper;
 
 /**
  * Implements Ajax CRUD actions for a model.
@@ -224,11 +225,11 @@ class BaseAjaxCrudController extends Controller {
 		// Setup page title and first breadcrumb
 		$this->view->title   = Yii::t( 'app', "View {object} {name}", [
 			'object' => $this->model_name,
-			'name'   => $this->model->{$this->model_field_name}
+			'name'   => ArrayHelper::getValue($this->model, $this->model_field_name)
 		] );
 		$this->addBreadCrumbs([
 			['label' => $this->model_name. ' Overview', 'url' => ['index']],
-			$this->model->{$this->model_field_name}
+			ArrayHelper::getValue($this->model, $this->model_field_name)
 		]);
 
 		if ( $request->isAjax && ! $request->isPjax  ) {
@@ -253,9 +254,9 @@ class BaseAjaxCrudController extends Controller {
 	 */
 	protected function viewModalFooter() {
 		return Html::button( 'Close', [
-			'class'        => 'btn btn-default pull-left',
-			'data-dismiss' => "modal"
-		] ) .
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => "modal"
+			] ) .
 		       Html::a( 'Edit', [ 'update', 'id' => $this->model->id ], [
 			       'class' => 'btn btn-primary',
 			       'role'  => 'modal-remote'
@@ -367,7 +368,7 @@ class BaseAjaxCrudController extends Controller {
 		// Setup page title and first breadcrumb
 		$this->view->title = Yii::t( 'app', "Create {object} copy of {name}", [
 			'object' => $this->model_name,
-			'name'   => $this->model->{$this->model_field_name}
+			'name'   => ArrayHelper::getValue($this->model, $this->model_field_name)
 		] );
 		$this->addBreadCrumbs([
 			['label' => $this->model_name. ' Overview', 'url' => ['index']],
@@ -420,9 +421,9 @@ class BaseAjaxCrudController extends Controller {
 	 */
 	protected function createModalFooterSaved() {
 		return Html::button( 'Close', [
-			'class'        => 'btn btn-default pull-left',
-			'data-dismiss' => "modal"
-		] ) .
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => "modal"
+			] ) .
 		       Html::a( 'Edit', [ 'update', 'id' => $this->model->id ], [
 			       'class' => 'btn btn-primary',
 			       'role'  => 'modal-remote'
@@ -436,9 +437,9 @@ class BaseAjaxCrudController extends Controller {
 	 */
 	protected function createModalFooterEdit() {
 		return Html::button( 'Close', [
-			'class'        => 'btn btn-default pull-left',
-			'data-dismiss' => "modal"
-		] ) .
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => "modal"
+			] ) .
 		       Html::button( 'Create', [ 'class' => 'btn btn-primary', 'type' => "submit" ] );
 	}
 
@@ -457,11 +458,11 @@ class BaseAjaxCrudController extends Controller {
 		// Setup generic view settings
 		$this->view->title = Yii::t( 'app', "Update {object} {name}", [
 			'object' => $this->model_name,
-			'name'   => $this->model->{$this->model_field_name}
+			'name'   => ArrayHelper::getValue($this->model, $this->model_field_name)
 		] );
 		$this->addBreadCrumbs([
 			['label' => $this->model_name. ' Overview', 'url' => ['index']],
-			['label' => $this->model->{$this->model_field_name}, 'url' => ['view', 'id' => $this->model->id]],
+			['label' => ArrayHelper::getValue($this->model, $this->model_field_name), 'url' => ['view', 'id' => $this->model->id]],
 			Yii::t('app', 'Update')
 		]);
 
@@ -510,9 +511,9 @@ class BaseAjaxCrudController extends Controller {
 	 */
 	protected function updateModalFooterSaved() {
 		return Html::button( 'Close', [
-			'class'        => 'btn btn-default pull-left',
-			'data-dismiss' => "modal"
-		] ) .
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => "modal"
+			] ) .
 		       Html::a( 'Edit', [ 'update', 'id' => $this->model->id ], [
 			       'class' => 'btn btn-primary',
 			       'role'  => 'modal-remote'
@@ -526,9 +527,9 @@ class BaseAjaxCrudController extends Controller {
 	 */
 	protected function updateModalFooterEdit() {
 		return Html::button( 'Close', [
-			'class'        => 'btn btn-default pull-left',
-			'data-dismiss' => "modal"
-		] ) .
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => "modal"
+			] ) .
 		       Html::button( 'Update', [ 'class' => 'btn btn-primary', 'type' => "submit" ] );
 	}
 
