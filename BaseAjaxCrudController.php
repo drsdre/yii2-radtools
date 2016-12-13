@@ -545,7 +545,7 @@ class BaseAjaxCrudController extends Controller {
 		$this->findModel( $id );
 		try {
 			$this->model->delete();
-			if ( $request->isAjax ) {
+			if ( $request->isAjax && ! $request->isPjax ) {
 				// Ajax request
 				Yii::$app->response->format = Response::FORMAT_JSON;
 
@@ -564,7 +564,7 @@ class BaseAjaxCrudController extends Controller {
 				$error = $e->getMessage();
 			}
 
-			if ( $request->isAjax ) {
+			if ( $request->isAjax && ! $request->isPjax ) {
 				// Ajax request
 				Yii::$app->response->format = Response::FORMAT_JSON;
 
