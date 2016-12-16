@@ -26,7 +26,7 @@ to the require section of your `composer.json` file.
 Usage
 -----
 
-Once the extension is installed, simple extend from BaseAjaxCrudController and add settings:
+Once the extension is installed, simply extend from BaseAjaxCrudController and add settings:
 
 ```php
 class UserController extends drsdre\radtools\BaseAjaxCrudController
@@ -38,19 +38,16 @@ class UserController extends drsdre\radtools\BaseAjaxCrudController
     protected $model_field_name = 'username';
 ```
 
-To use hierarchy links, include the HierarchyLinkTrait (it requires the controller to be extended from BaseAjaxCrudController):
+To use hierarchy links, simply extend from AjaxCrudHierarchyLinkController and setup $hierarchy_links parameter:
 ```php
-class TableController extends drsdre\radtools\BaseAjaxCrudController
+class TableController extends drsdre\radtools\AjaxCrudHierarchyLinkController
 {   
     protected $useDynagrid = true;
     protected $modelClass = 'app\models\UserForm';
     protected $searchModelClass ='app\models\search\UserSearch';
     protected $model_name = 'User';
-    protected $model_field_name = 'username';
-        
-   use drsdre\radtools\HierarchyLinkController;
-
-   protected $hierarchy_links = [
+    protected $model_field_name = 'username';       
+    protected $hierarchy_links = [
     		'user_id' => [
     			'model' => 'app\models\User',
     			'linked_model' => 'user',
