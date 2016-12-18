@@ -280,7 +280,6 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	public function actionIndex() {
-		$request = Yii::$app->request;
 
 		// Setup page title and first breadcrumb
 		$this->view->title = Yii::t( 'app', "{object} Overview", [
@@ -288,43 +287,72 @@ class BaseAjaxCrudController extends Controller {
 		] );
 		$this->addBreadCrumbs( [ $this->view->title ] );
 
+		// Handle updates from grid through editable widgets
+		if ($json_output = $this->updateFromEditable(
+			new $this->modelClass,
+			function($posted, $model) {
+				return $this->indexEditableOutput($posted, $model);
+			}
+		)
+		) {
+			return $json_output;
+		}
+
 		// Setup data feed
 		$searchModel  = new $this->searchModelClass();
 		$dataProvider = $this->indexDataProvider( $searchModel );
 
-		// Validate if there is input from editable field saved through AJAX
+		return $this->render( 'index', $this->indexRenderData( $searchModel, $dataProvider ) );
+	}
+
+	/**
+	 * Process an editable field update from kartik-v/yii2-editable
+	 *
+	 * @param string $model_class
+	 * @param \Closure|null $output_function
+	 *
+	 * @return string|null json data if editable update found
+	 */
+	public function updateFromEditable($model_class, \Closure $output_function = null) {
+		$request = Yii::$app->request;
+
+		// Check if input from editable field saved through AJAX is present
 		if ( $request->post( 'hasEditable' ) ) {
-			$this->findModel( $request->post( 'editableKey' ) );
+
+			// Load record
+			$record_id = $request->post( 'editableKey' );
+			if ( ! $modelRecord = $model_class::findOne( $record_id ) ) {
+				return Json::encode( [
+					'output'  => '',
+					'message' => 'Record '.$record_id.' not found',
+				] );
+			}
 
 			// Fetch the first entry in posted data
-			$search_parent_model = get_parent_class( $searchModel );
-			$searchParentModel   = new $search_parent_model;
-			$posted              = current( $request->post( $searchParentModel->formName() ) );
+			$posted = current( $request->post( $modelRecord->formName() ) );
 
-			// Load model
-			if ( $this->model->load( [ $this->model->formName() => $posted ] ) ) {
+			// Load model with updated data
+			if ( $modelRecord->load( [ $modelRecord->formName() => $posted ] ) ) {
 
-				// Can save model or do something before saving model
-				if ( $this->model->save() ) {
-					$out = Json::encode( [ 'output'  => $this->indexEditableOutput( $posted, $this->model ),
-					                       'message' => '',
+				// Validate & save data
+				if ( $modelRecord->save() ) {
+					return Json::encode( [
+						'output'  => $output_function?$output_function( $posted, $modelRecord ):'',
+						'message' => '',
 					] );
 				} else {
-					$out = Json::encode( [ 'output'  => $this->indexEditableOutput( $posted, $this->model ),
-					                       'message' => 'Error',
+					// Validation error
+					return Json::encode( [
+						'output'  => '',
+						'message' => 'Error',
 					] );
 				}
 
 			} else {
 				// Default json response
-				$out = Json::encode( [ 'output' => '', 'message' => '' ] );
+				return Json::encode( [ 'output' => '', 'message' => 'No data found' ] );
 			}
-
-			// Return ajax json encoded response
-			return $out;
 		}
-
-		return $this->render( 'index', $this->indexRenderData( $searchModel, $dataProvider ) );
 	}
 
 	/**
