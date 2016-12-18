@@ -287,72 +287,11 @@ class BaseAjaxCrudController extends Controller {
 		] );
 		$this->addBreadCrumbs( [ $this->view->title ] );
 
-		// Handle updates from grid through editable widgets
-		if ($json_output = $this->updateFromEditable(
-			new $this->modelClass,
-			function($posted, $model) {
-				return $this->indexEditableOutput($posted, $model);
-			}
-		)
-		) {
-			return $json_output;
-		}
-
 		// Setup data feed
 		$searchModel  = new $this->searchModelClass();
 		$dataProvider = $this->indexDataProvider( $searchModel );
 
 		return $this->render( 'index', $this->indexRenderData( $searchModel, $dataProvider ) );
-	}
-
-	/**
-	 * Process an editable field update from kartik-v/yii2-editable
-	 *
-	 * @param string $model_class
-	 * @param \Closure|null $output_function
-	 *
-	 * @return string|null json data if editable update found
-	 */
-	public function updateFromEditable($model_class, \Closure $output_function = null) {
-		$request = Yii::$app->request;
-
-		// Check if input from editable field saved through AJAX is present
-		if ( $request->post( 'hasEditable' ) ) {
-
-			// Load record
-			$record_id = $request->post( 'editableKey' );
-			if ( ! $modelRecord = $model_class::findOne( $record_id ) ) {
-				return Json::encode( [
-					'output'  => '',
-					'message' => 'Record '.$record_id.' not found',
-				] );
-			}
-
-			// Fetch the first entry in posted data
-			$posted = current( $request->post( $modelRecord->formName() ) );
-
-			// Load model with updated data
-			if ( $modelRecord->load( [ $modelRecord->formName() => $posted ] ) ) {
-
-				// Validate & save data
-				if ( $modelRecord->save() ) {
-					return Json::encode( [
-						'output'  => $output_function?$output_function( $posted, $modelRecord ):'',
-						'message' => '',
-					] );
-				} else {
-					// Validation error
-					return Json::encode( [
-						'output'  => '',
-						'message' => 'Error',
-					] );
-				}
-
-			} else {
-				// Default json response
-				return Json::encode( [ 'output' => '', 'message' => 'No data found' ] );
-			}
-		}
 	}
 
 	/**
