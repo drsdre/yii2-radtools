@@ -66,4 +66,68 @@ class TableController extends drsdre\radtools\AjaxCrudHierarchyLinkController
     	];
 ```
 
+Bulk update & delete
+-----
+
+The bulk-update and bulk-delete actions are enabled by default in BaseAjaxCrudController. 
+They are added in the view using the BulkButtonWidget. 
+
+Bulk-update uses the model scenario that can be set on a single update action. 
+You can add form elements for changing the data to the 'data-confirm-message'. 
+Use the exact field name of the model (this is auto-mapped in the action). 
+The 'data-confirm-ok' field is used to build the submit button which pushes. 
+
+For example:
+  
+```php
+   <?= DynaGrid::widget([
+                'options' => [
+                    'id' => 'example-gridview',
+                ],
+                'gridOptions'=>[
+                    'dataProvider' => $dataProvider,
+                    'filterModel' => $searchModel,
+                    'panel' => [
+                        'type' => 'primary',
+                        'heading' => '<i class="glyphicon glyphicon-list"></i>',
+                        'before' => '<em></em>',
+                        'after' => BulkButtonWidget::widget( [
+		                        'buttons' =>
+			                        Html::a( '<i class="glyphicon glyphicon-pencil"></i>&nbsp;Change Status',
+				                        [ '/cmm-wptheme-map/bulk-update' ],
+				                        [
+					                        'class'                => "btn btn-primary btn-xs",
+					                        'role'                 => 'modal-remote-bulk',
+					                        'data-method'          => false,// for overide yii data api
+					                        'data-request-method'  => 'post',
+					                        'data-confirm-title'   => 'Bulk Change Status',
+					                        'data-confirm-message' =>
+						                        Html::dropDownList(
+							                        'status',
+							                        '',
+							                        common\models\Model::$statuses
+						                        ),
+					                        'data-confirm-ok '     => Html::button( 'Save',
+						                        [ 'class' => 'btn btn-primary', 'type' => "submit" ] ),
+				                        ]
+			                        ) .
+			                        ' ' .
+			                        Html::a( '<i class="glyphicon glyphicon-trash"></i>&nbsp; Delete All',
+				                        [ "bulk-delete" ],
+				                        [
+					                        'class'                => "btn btn-danger btn-xs",
+					                        'role'                 => 'modal-remote-bulk',
+					                        'data-confirm'         => false,
+					                        'data-method'          => false,
+					                        'data-request-method'  => 'post',
+					                        'data-confirm-title'   => 'Are you sure?',
+					                        'data-confirm-message' => 'Are you sure want to delete this item',
+				                        ] ),
+	                        ] ) .
+                                   '<div class="clearfix"></div>',
+                    ],
+                ],
+                'columns' => require(__DIR__.'/_columns.php'),
+            ]); ?>
+```
 TODO add explanations for the parameters.

@@ -720,6 +720,121 @@ class BaseAjaxCrudController extends Controller {
 	}
 
 	/**
+	 * Process bulk updates
+	 *
+	 * @return \yii\web\Response|array
+	 *
+	 * @throws NotFoundHttpException
+	 */
+	public function actionBulkUpdate() {
+		$request = yii::$app->request;
+
+		// Parse the fields to update
+		$update_attribute_value = [];
+		$Model                  = new $this->modelClass;
+		foreach ( $Model->activeAttributes() as $attribute ) {
+			if ( ! empty( yii::$app->request->post( $attribute ) ) ) {
+				$update_attribute_value[ $attribute ] = yii::$app->request->post( $attribute );
+			}
+		}
+
+		// CHeck if there are fields to update
+		if ( ! $update_attribute_value ) {
+			yii::$app->session->setFlash( 'alert', [
+				'body'    => yii::t( 'app', 'No fields found to update.' ),
+				'options' => [ 'class' => 'alert-warning' ],
+			] );
+
+			return $this->redirect( [ 'index' ] );
+		}
+
+		// Update the fields for all the selected records (pks)
+		$errors = [];
+		$records_updated = 0;
+		foreach ( explode( ',', $request->post( 'pks' ) ) as $id ) {
+			$this->findModel( (int) $id, false );
+
+			if ( $this->model ) {
+				// Set a model scenario if specified
+				if ( isset( $this->model_update_scenario ) ) {
+					$this->model->setScenario( $this->model_update_scenario );
+				}
+
+				// Update the variables
+				$this->model->attributes = $update_attribute_value;
+
+				// Check if record is changed
+				if ( $this->model->getDirtyAttributes() ) {
+					// Save data
+					if ( ! $this->model->save() ) {
+						// Track errors
+						$errors[] = $this->model->getErrors();
+					} else {
+						// Track updates
+						$records_updated++;
+					}
+				}
+			} else {
+				// Track if record is not found
+				$errors[] = 'id ' . $id . ' not found!';
+			}
+		}
+
+		if ( $request->isAjax && ! $request->isPjax ) {
+			// Ajax request
+			Yii::$app->response->format = Response::FORMAT_JSON;
+
+			// Check if errors are found
+			if ( $errors ) {
+				return [
+					'forceReload' => $this->pjaxForceUpdateId(),
+					'title'   => Yii::t( 'app', 'Delete failed' ),
+					'content' => Yii::t( 'app', 'Error(s): {errors}', [
+						'errors' => print_r( $errors, true )
+					] ),
+					'footer'  => Html::button( 'Close', [
+						'class'        => 'btn btn-default pull-left',
+						'data-dismiss' => "modal",
+					] ),
+				];
+			} else {
+				return [
+					'forceReload' => $this->pjaxForceUpdateId(),
+					'title'   => Yii::t( 'app', 'Bulk update succesful' ),
+					'content' => Yii::t( 'app', '{records} records updated', [
+						'records' => $records_updated
+					] ),
+					'footer'  => Html::button( 'Close', [
+						'class'        => 'btn btn-default pull-left',
+						'data-dismiss' => "modal",
+					] ),
+				];
+			}
+		} else {
+			// Non-ajax request
+
+			// Check if errors are found
+			if ( $errors ) {
+				yii::$app->session->setFlash( 'alert', [
+					'body'    => yii::t( 'app', 'Bulk update failed: {errors}.', [
+						'errors' => print_r( $errors, true ),
+					] ),
+					'options' => [ 'class' => 'alert-danger' ],
+				] );
+			} else {
+				yii::$app->session->setFlash( 'alert', [
+					'body'    => yii::t( 'app', 'Bulk update successful. {records} records updated', [
+						'records' => $records_updated
+					] ),
+					'options' => [ 'class' => 'alert-success' ],
+				] );
+			}
+
+			return $this->redirect( [ 'index' ] );
+		}
+	}
+
+	/**
 	 * Finds the model based on its primary key value.
 	 * If the model is not found, a 404 HTTP exception will be thrown.
 	 *
@@ -727,9 +842,10 @@ class BaseAjaxCrudController extends Controller {
 	 *
 	 * @throws NotFoundHttpException if the model cannot be found
 	 */
-	protected function findModel( $id ) {
+	protected function findModel( $id, $throw_not_found = true ) {
 		$modelClass = $this->modelClass;
-		if ( ! $this->model = $modelClass::findOne( $id ) ) {
+		$this->model = $modelClass::findOne( $id );
+		if ( ! $this->model && $throw_not_found ) {
 			throw new NotFoundHttpException( 'The requested page does not exist.' );
 		}
 	}
