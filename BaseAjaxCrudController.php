@@ -389,14 +389,14 @@ class BaseAjaxCrudController extends Controller {
 			Yii::t( 'app', 'Create' ),
 		] );
 
+		// Set a model scenario if specified
+		if ( isset( $this->model_create_scenario ) ) {
+			$this->model->setScenario( $this->model_create_scenario );
+		}
+
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			Yii::$app->response->format = Response::FORMAT_JSON;
-
-			// Set a model scenario if specified
-			if ( isset( $this->model_create_scenario ) ) {
-				$this->model->setScenario( $this->model_create_scenario );
-			}
 
 			// Load, validate and save model data
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
@@ -458,14 +458,15 @@ class BaseAjaxCrudController extends Controller {
 			Yii::t( 'app', 'Copy' ),
 		] );
 
+		// Set a model scenario if specified
+		if ( isset( $this->model_create_scenario ) ) {
+			$this->model->setScenario( $this->model_create_scenario );
+		}
+
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			Yii::$app->response->format = Response::FORMAT_JSON;
 
-			// Set a model scenario if specified
-			if ( isset( $this->model_create_scenario ) ) {
-				$this->model->setScenario( $this->model_create_scenario );
-			}
 
 			// Load, validate and save model data
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
@@ -552,14 +553,15 @@ class BaseAjaxCrudController extends Controller {
 			Yii::t( 'app', 'Update' ),
 		] );
 
+		// Set a model scenario if specified
+		if ( isset( $this->model_update_scenario ) ) {
+			$this->model->setScenario( $this->model_update_scenario );
+		}
+
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			Yii::$app->response->format = Response::FORMAT_JSON;
 
-			// Set a model scenario if specified
-			if ( isset( $this->model_update_scenario ) ) {
-				$this->model->setScenario( $this->model_update_scenario );
-			}
 
 			// Load, validate and save model data
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
