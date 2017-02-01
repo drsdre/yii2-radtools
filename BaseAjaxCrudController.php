@@ -422,7 +422,10 @@ class BaseAjaxCrudController extends Controller {
 						'title'       => $this->view->title,
 						'content'     => '<div class="text-success">' . Yii::t( 'app', 'Create {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
-						                 $this->renderAjax( $this->createSuccessRedirect, $this->updateRenderData() ),
+						                 $this->renderAjax(
+							                 $this->createSuccessRedirect,
+							                 ($this->createSuccessRedirect=='update'?$this->updateRenderData():null)
+						                 ),
 						'footer'      => $this->CreateModalFooterSaved(),
 					];
 				} else {
@@ -504,7 +507,11 @@ class BaseAjaxCrudController extends Controller {
 						'title'       => $this->view->title,
 						'content'     => '<div class="text-success">' . Yii::t( 'app', 'Copy {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
-						                 $this->renderAjax( $this->copySuccessRedirect, $this->updateRenderData() ),
+						                 $this->renderAjax(
+							                 $this->copySuccessRedirect,
+							                 ($this->copySuccessRedirect=='update'?$this->updateRenderData():null)
+
+						                 ),
 						'footer'      => $this->CreateModalFooterSaved(),
 					];
 				} else {
@@ -601,12 +608,31 @@ class BaseAjaxCrudController extends Controller {
 			// Load, validate and save model data
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 				// Success
-				return [
-					'forceReload' => $this->pjaxForceUpdateId(),
-					'title'       => $this->view->title,
-					'content'     => $this->renderAjax( $this->updateSuccessRedirect, $this->updateRenderData() ),
-					'footer'      => $this->updateModalFooterSaved(),
-				];
+				if ( $this->updateSuccessRedirect == 'index') {
+					return [
+						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceClose'  => true,
+					];
+				} elseif ( in_array( $this->updateSuccessRedirect, ['view', 'update'] ) ) {
+					// Success
+					return [
+						'forceReload' => $this->pjaxForceUpdateId(),
+						'title'       => $this->view->title,
+						'content'     => '<div class="text-success">' . Yii::t( 'app', 'Update {object} success',
+								[ 'object' => $this->model_name ] ) . '</div>'.
+						                 $this->renderAjax(
+							                 $this->updateSuccessRedirect,
+							                 ($this->updateSuccessRedirect=='update'?$this->updateRenderData():null)
+						                 ),
+						'footer'      => $this->updateModalFooterSaved(),
+					];
+				} else {
+					// TODO add redirect handling to ModalRemote.js
+					return [
+						'redirect' => $this->updateSuccessRedirect,
+						'forceClose'  => true,
+					];
+				}
 			} else {
 				// Start (or fail) show form
 				return [
