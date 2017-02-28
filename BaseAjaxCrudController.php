@@ -89,7 +89,7 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	public function dataProviderSessionKey() {
-		return self::$persist_grid_session_key . $this->model_name;
+		return self::$persist_grid_session_key . '_' . $this->className();
 	}
 
 	/**
@@ -235,8 +235,8 @@ class BaseAjaxCrudController extends Controller {
 		$dataProvider = $searchModel->search( $query_params );
 
 		// Setup query parameters (especially for sub-grids)
-		$dataProvider->pagination->pageParam = $grid_id . 'page';
-		$dataProvider->sort->sortParam       = $grid_id . 'sort';
+		$dataProvider->pagination->pageParam = $grid_id . '_page';
+		$dataProvider->sort->sortParam       = $grid_id . '_sort';
 
 
 		// Persist query filters from search
@@ -257,7 +257,9 @@ class BaseAjaxCrudController extends Controller {
 			// If page_number is not in query, use persisted page selection
 			if ($page_number === false) {
 				$page_number = $session->get( $session_key . '_page', 0 );
-				$dataProvider->pagination->page = $page_number;
+				if ( $page_number <= $dataProvider->pagination->pageCount ) {
+					$dataProvider->pagination->page = $page_number;
+				}
 			}
 
 			// Set page number and persist it
