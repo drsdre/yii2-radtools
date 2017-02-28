@@ -228,9 +228,10 @@ class BaseAjaxCrudController extends Controller {
 		}
 
 		// Create dataProvider and include forced filters
-		$query_params = array_merge_recursive(
-			$request->queryParams,
-			[ $searchModel->formName() => $default_filters ]
+		$query_params = $request->queryParams;
+		$query_params[$searchModel->formName()] = array_merge(
+			(isset($query_params[$searchModel->formName()])?$query_params[$searchModel->formName()]:[]),
+			$default_filters
 		);
 		$dataProvider = $searchModel->search( $query_params );
 
