@@ -180,6 +180,8 @@ class BaseAjaxCrudController extends Controller {
 	protected function indexDataProvider( ActiveRecord $searchModel ) {
 		return $this->setupDataProvider(
 			$searchModel,
+			'',
+			[],
 			$this->persist_grid_filters,
 			$this->persist_grid_page,
 			$this->persist_grid_order
@@ -201,7 +203,7 @@ class BaseAjaxCrudController extends Controller {
 	public function setupDataProvider(
 		ActiveRecord $searchModel,
 		$grid_id = '',
-		$default_filters = [],
+		array $default_filters = [],
 		$persist_filters = false,
 		$persist_page = false,
 		$persist_order = false
