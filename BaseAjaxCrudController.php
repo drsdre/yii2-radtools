@@ -429,7 +429,7 @@ class BaseAjaxCrudController extends Controller {
 								[ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
 							                 $this->createSuccessRedirect,
-							                 ($this->createSuccessRedirect=='update'?$this->updateRenderData():null)
+							                 $this->updateRenderData()
 						                 ),
 						'footer'      => $this->CreateModalFooterSaved(),
 					];
@@ -514,7 +514,7 @@ class BaseAjaxCrudController extends Controller {
 								[ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
 							                 $this->copySuccessRedirect,
-							                 ($this->copySuccessRedirect=='update'?$this->updateRenderData():null)
+							                 $this->updateRenderData()
 
 						                 ),
 						'footer'      => $this->CreateModalFooterSaved(),
@@ -627,7 +627,7 @@ class BaseAjaxCrudController extends Controller {
 								[ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
 							                 $this->updateSuccessRedirect,
-							                 ($this->updateSuccessRedirect=='update'?$this->updateRenderData():null)
+							                 $this->updateRenderData()
 						                 ),
 						'footer'      => $this->updateModalFooterSaved(),
 					];
