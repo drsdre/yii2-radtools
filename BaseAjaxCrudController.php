@@ -193,7 +193,7 @@ class BaseAjaxCrudController extends Controller {
 	 *
 	 * @param ActiveRecord $searchModel
 	 * @param string $grid_id           when multiple dataProvider widgets are used on a page
-	 * @param array $default_filters    overrules query filters
+	 * @param array $base_where_filter  base filter which is applied with ActiveQuery andWhere after search
 	 * @param bool $persist_filters
 	 * @param bool $persist_page
 	 * @param bool $persist_order
@@ -203,7 +203,7 @@ class BaseAjaxCrudController extends Controller {
 	public function setupDataProvider(
 		ActiveRecord $searchModel,
 		$grid_id = '',
-		array $default_filters = [],
+		array $base_where_filter = [],
 		$persist_filters = false,
 		$persist_page = false,
 		$persist_order = false
@@ -221,7 +221,7 @@ class BaseAjaxCrudController extends Controller {
 				// Clear query filters on filter reset
 				$session->remove( $session_key . '_filters');
 			} elseif ( ! $request->get( $searchModel->formName(), false ) ) {
-				// If no filters set in query, load previous filters from session
+				// If no filters set in query, load persisted filters from session into search model
 				$searchModel->setAttributes( $session->get( $session_key . '_filters', [] ) );
 			} else {
 				// If filtering changed, remove page persistence
@@ -229,23 +229,21 @@ class BaseAjaxCrudController extends Controller {
 			}
 		}
 
-		// Create dataProvider and include forced filters
-		$query_params = $request->queryParams;
-		$query_params[$searchModel->formName()] = array_merge(
-			(isset($query_params[$searchModel->formName()])?$query_params[$searchModel->formName()]:[]),
-			$default_filters
-		);
-		$dataProvider = $searchModel->search( $query_params );
-
-		// Setup query parameters (especially for sub-grids)
-		$dataProvider->pagination->pageParam = $grid_id . '_page';
-		$dataProvider->sort->sortParam       = $grid_id . '_sort';
-
+		// Create dataProvider
+		$dataProvider = $searchModel->search( $request->queryParams );
 
 		// Persist query filters from search
 		if ( $persist_filters ) {
 			$session->set( $session_key . '_filters', $searchModel->getAttributes(), $this->persist_grid_expiration );
 		}
+
+		// Apply default filters
+		$dataProvider->query->andWhere($base_where_filter);
+
+
+		// Setup query parameters (especially for sub-grids)
+		$dataProvider->pagination->pageParam = $grid_id . '_page';
+		$dataProvider->sort->sortParam       = $grid_id . '_sort';
 
 		// Persistent paging
 		if ( $persist_page ) {
@@ -296,7 +294,7 @@ class BaseAjaxCrudController extends Controller {
 	public function actionIndex() {
 
 		// Setup page title and first breadcrumb
-		$this->view->title = Yii::t( 'app', "{object} Overview", [
+		$this->view->title = yii::t( 'app', "{object} Overview", [
 			'object' => $this->model_name,
 		] );
 		$this->addBreadCrumbs( [ $this->view->title ] );
@@ -316,11 +314,11 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	public function actionView( $id ) {
-		$request = Yii::$app->request;
+		$request = yii::$app->request;
 		$this->findModel( $id );
 
 		// Setup page title and first breadcrumb
-		$this->view->title = Yii::t( 'app', "View {object} {name}", [
+		$this->view->title = yii::t( 'app', "View {object} {name}", [
 			'object' => $this->model_name,
 			'name'   => ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
@@ -331,7 +329,7 @@ class BaseAjaxCrudController extends Controller {
 
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
-			Yii::$app->response->format = Response::FORMAT_JSON;
+			yii::$app->response->format = Response::FORMAT_JSON;
 
 			return [
 				'title'   => $this->view->title,
@@ -377,7 +375,7 @@ class BaseAjaxCrudController extends Controller {
 		return [
 			'forceReload' => $this->pjaxForceUpdateId(),
 			'title'       => $this->view->title,
-			'content'     => '<span class="text-success">' . Yii::t( 'app', 'Create {object} success',
+			'content'     => '<span class="text-success">' . yii::t( 'app', 'Create {object} success',
 					[ 'object' => $this->model_name ] ) . '</span>',
 			'footer'      => $this->createModalFooterSaved(),
 
@@ -391,16 +389,16 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	public function actionCreate() {
-		$request = Yii::$app->request;
+		$request = yii::$app->request;
 
 		// Setup a new record
 		$this->model = $this->newModel();
 
 		// Setup page title and first breadcrumb
-		$this->view->title = Yii::t( 'app', "Add New {object}", [ 'object' => $this->model_name ] );
+		$this->view->title = yii::t( 'app', "Add New {object}", [ 'object' => $this->model_name ] );
 		$this->addBreadCrumbs( [
 			[ 'label' => $this->model_name . ' Overview', 'url' => [ 'index' ] ],
-			Yii::t( 'app', 'Create' ),
+			yii::t( 'app', 'Create' ),
 		] );
 
 		// Set a model scenario if specified
@@ -410,7 +408,7 @@ class BaseAjaxCrudController extends Controller {
 
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
-			Yii::$app->response->format = Response::FORMAT_JSON;
+			yii::$app->response->format = Response::FORMAT_JSON;
 
 			// Load, validate and save model data
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
@@ -425,7 +423,7 @@ class BaseAjaxCrudController extends Controller {
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'title'       => $this->view->title,
-						'content'     => '<div class="text-success">' . Yii::t( 'app', 'Create {object} success',
+						'content'     => '<div class="text-success">' . yii::t( 'app', 'Create {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
 							                 $this->createSuccessRedirect,
@@ -452,7 +450,7 @@ class BaseAjaxCrudController extends Controller {
 			//  Non-ajax request
 
 			// Load, validate and save model data
-			if ( $this->model->load( Yii::$app->request->post() ) && $this->model->save() ) {
+			if ( $this->model->load( yii::$app->request->post() ) && $this->model->save() ) {
 				// Success, go back to index
 				return $this->redirect( [ $this->createSuccessRedirect, 'id' => $this->model->id ] );
 			} else {
@@ -469,7 +467,7 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	public function actionCopy( $id ) {
-		$request = Yii::$app->request;
+		$request = yii::$app->request;
 
 		$this->findModel( $id );
 
@@ -478,13 +476,13 @@ class BaseAjaxCrudController extends Controller {
 		$this->model->isNewRecord = true;
 
 		// Setup page title and first breadcrumb
-		$this->view->title = Yii::t( 'app', "Create {object} copy of {name}", [
+		$this->view->title = yii::t( 'app', "Create {object} copy of {name}", [
 			'object' => $this->model_name,
 			'name'   => ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
 		$this->addBreadCrumbs( [
 			[ 'label' => $this->model_name . ' Overview', 'url' => [ 'index' ] ],
-			Yii::t( 'app', 'Copy' ),
+			yii::t( 'app', 'Copy' ),
 		] );
 
 		// Set a model scenario if specified
@@ -494,7 +492,7 @@ class BaseAjaxCrudController extends Controller {
 
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
-			Yii::$app->response->format = Response::FORMAT_JSON;
+			yii::$app->response->format = Response::FORMAT_JSON;
 
 
 			// Load, validate and save model data
@@ -510,7 +508,7 @@ class BaseAjaxCrudController extends Controller {
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'title'       => $this->view->title,
-						'content'     => '<div class="text-success">' . Yii::t( 'app', 'Copy {object} success',
+						'content'     => '<div class="text-success">' . yii::t( 'app', 'Copy {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
 							                 $this->copySuccessRedirect,
@@ -537,7 +535,7 @@ class BaseAjaxCrudController extends Controller {
 			}
 		} else {
 			//  Non-ajax request
-			if ( $this->model->load( Yii::$app->request->post() ) && $this->model->save() ) {
+			if ( $this->model->load( yii::$app->request->post() ) && $this->model->save() ) {
 				return $this->redirect( [ $this->copySuccessRedirect, 'id' => $this->model->id ] );
 			} else {
 				return $this->render( 'create', $this->createRenderData() );
@@ -583,11 +581,11 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	public function actionUpdate( $id ) {
-		$request = Yii::$app->request;
+		$request = yii::$app->request;
 		$this->findModel( $id );
 
 		// Setup generic view settings
-		$this->view->title = Yii::t( 'app', "Update {object} {name}", [
+		$this->view->title = yii::t( 'app', "Update {object} {name}", [
 			'object' => $this->model_name,
 			'name'   => ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
@@ -597,7 +595,7 @@ class BaseAjaxCrudController extends Controller {
 				'label' => ArrayHelper::getValue( $this->model, $this->model_field_name ),
 				'url'   => [ 'view', 'id' => $this->model->id ],
 			],
-			Yii::t( 'app', 'Update' ),
+			yii::t( 'app', 'Update' ),
 		] );
 
 		// Set a model scenario if specified
@@ -607,7 +605,7 @@ class BaseAjaxCrudController extends Controller {
 
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
-			Yii::$app->response->format = Response::FORMAT_JSON;
+			yii::$app->response->format = Response::FORMAT_JSON;
 
 
 			// Load, validate and save model data
@@ -623,7 +621,7 @@ class BaseAjaxCrudController extends Controller {
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'title'       => $this->view->title,
-						'content'     => '<div class="text-success">' . Yii::t( 'app', 'Update {object} success',
+						'content'     => '<div class="text-success">' . yii::t( 'app', 'Update {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
 							                 $this->updateSuccessRedirect,
@@ -696,13 +694,13 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	public function actionDelete( $id ) {
-		$request = Yii::$app->request;
+		$request = yii::$app->request;
 		$this->findModel( $id );
 		try {
 			$this->model->delete();
 			if ( $request->isAjax && ! $request->isPjax ) {
 				// Ajax request
-				Yii::$app->response->format = Response::FORMAT_JSON;
+				yii::$app->response->format = Response::FORMAT_JSON;
 
 				return [ 'forceClose' => true, 'forceReload' => '#crud-datatable-pjax', ];
 			} else {
@@ -716,7 +714,7 @@ class BaseAjaxCrudController extends Controller {
 					$matches ) === 1
 			) {
 				// Handle SQL foreign key errors
-				$error = Yii::t( 'app', 'The record is linked with {foreign_key}. Unlink before delete.',
+				$error = yii::t( 'app', 'The record is linked with {foreign_key}. Unlink before delete.',
 					[ 'foreign_key' => $matches[1] ] );
 			} else {
 				$error = $e->getMessage();
@@ -724,11 +722,11 @@ class BaseAjaxCrudController extends Controller {
 
 			if ( $request->isAjax && ! $request->isPjax ) {
 				// Ajax request
-				Yii::$app->response->format = Response::FORMAT_JSON;
+				yii::$app->response->format = Response::FORMAT_JSON;
 
 				return [
-					'title'   => Yii::t( 'app', 'Delete failed' ),
-					'content' => Yii::t( 'app', 'Error: {message}', [ 'message' => $error ] ),
+					'title'   => yii::t( 'app', 'Delete failed' ),
+					'content' => yii::t( 'app', 'Error: {message}', [ 'message' => $error ] ),
 					'footer'  => Html::button( 'Close', [
 						'class'        => 'btn btn-default pull-left',
 						'data-dismiss' => "modal",
@@ -736,8 +734,8 @@ class BaseAjaxCrudController extends Controller {
 				];
 			} else {
 				// Non-ajax request
-				Yii::$app->getSession()->setFlash( 'error',
-					Yii::t( 'app', 'Delete failed, error: {message}',
+				yii::$app->getSession()->setFlash( 'error',
+					yii::t( 'app', 'Delete failed, error: {message}',
 						[ 'message' => $error ]
 					)
 				)
@@ -756,7 +754,7 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	public function actionBulkDelete() {
-		$request = Yii::$app->request;
+		$request = yii::$app->request;
 
 		$not_found = [];
 
@@ -774,7 +772,7 @@ class BaseAjaxCrudController extends Controller {
 
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
-			Yii::$app->response->format = Response::FORMAT_JSON;
+			yii::$app->response->format = Response::FORMAT_JSON;
 
 			return [
 				'forceReload' => $this->pjaxForceUpdateId(),
@@ -850,14 +848,14 @@ class BaseAjaxCrudController extends Controller {
 
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
-			Yii::$app->response->format = Response::FORMAT_JSON;
+			yii::$app->response->format = Response::FORMAT_JSON;
 
 			// Check if errors are found
 			if ( $errors ) {
 				return [
 					'forceReload' => $this->pjaxForceUpdateId(),
-					'title'   => Yii::t( 'app', 'Delete failed' ),
-					'content' => Yii::t( 'app', 'Error(s): {errors}', [
+					'title'   => yii::t( 'app', 'Delete failed' ),
+					'content' => yii::t( 'app', 'Error(s): {errors}', [
 						'errors' => print_r( $errors, true )
 					] ),
 					'footer'  => Html::button( 'Close', [
@@ -868,8 +866,8 @@ class BaseAjaxCrudController extends Controller {
 			} else {
 				return [
 					'forceReload' => $this->pjaxForceUpdateId(),
-					'title'   => Yii::t( 'app', 'Bulk update succesful' ),
-					'content' => Yii::t( 'app', '{records} records updated', [
+					'title'   => yii::t( 'app', 'Bulk update succesful' ),
+					'content' => yii::t( 'app', '{records} records updated', [
 						'records' => $records_updated
 					] ),
 					'footer'  => Html::button( 'Close', [
