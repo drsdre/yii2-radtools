@@ -237,9 +237,10 @@ class BaseAjaxCrudController extends Controller {
 			$session->set( $session_key . '_filters', $searchModel->getAttributes(), $this->persist_grid_expiration );
 		}
 
-		// Apply default filters
-		$dataProvider->query->andWhere($base_where_filter);
-
+		// Apply default filters if provided
+		if (count($base_where_filter)) {
+			$dataProvider->query->andWhere($base_where_filter);
+		}
 
 		// Setup query parameters (especially for sub-grids)
 		$dataProvider->pagination->pageParam = $grid_id . '_page';
