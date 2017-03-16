@@ -68,6 +68,9 @@ class BaseAjaxCrudController extends Controller {
 	/** @var	string $copySuccessRedirect view to redirect to when copy has succeeded */
 	protected $copySuccessRedirect = 'update';
 
+	/** @var	string $copySuccessRedirect view to redirect to when copy has succeeded */
+	protected $viewShowFullpageLink = false;
+
 	/**
 	 * ID for pjax forceUpdate
 	 *
@@ -308,6 +311,23 @@ class BaseAjaxCrudController extends Controller {
 	}
 
 	/**
+	 * Adds a button which takes the user out of modal to a full page view for given controller action
+	 *
+	 * @param string $action
+	 *
+	 * @return string
+	 */
+	protected function modalToFullpageLink($action) {
+		return $this->viewShowFullpageLink?
+			Html::a( '<span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>',
+				yii\helpers\Url::to(
+					[$action,  'id' => $this->model->id]
+				)
+			) . '&nbsp;':
+			'';
+	}
+
+	/**
 	 * View model record.
 	 *
 	 * @param integer $id
@@ -333,7 +353,7 @@ class BaseAjaxCrudController extends Controller {
 			yii::$app->response->format = Response::FORMAT_JSON;
 
 			return [
-				'title'   => $this->view->title,
+				'title'   => $this->modalToFullpageLink('view') . $this->view->title,
 				'content' => $this->renderAjax( 'view', $this->viewRenderData() ),
 				'footer'  => $this->viewModalFooter(),
 			];
@@ -349,11 +369,11 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	protected function viewModalFooter() {
-		return Html::button( 'Close', [
+		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
 				'data-dismiss' => "modal",
 			] ) .
-		       Html::a( 'Edit', [ 'update', 'id' => $this->model->id ], [
+		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
 			       'class' => 'btn btn-primary',
 			       'role'  => 'modal-remote',
 		       ] );
@@ -550,11 +570,11 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	protected function createModalFooterSaved() {
-		return Html::button( 'Close', [
+		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
 				'data-dismiss' => "modal",
 			] ) .
-		       Html::a( 'Edit', [ 'update', 'id' => $this->model->id ], [
+		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
 			       'class' => 'btn btn-primary',
 			       'role'  => 'modal-remote',
 		       ] );
@@ -566,11 +586,11 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	protected function createModalFooterEdit() {
-		return Html::button( 'Close', [
+		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
 				'data-dismiss' => "modal",
 			] ) .
-		       Html::button( 'Create', [ 'class' => 'btn btn-primary', 'type' => "submit" ] );
+		       Html::button( yii::t('app', 'Create'), [ 'class' => 'btn btn-primary', 'type' => "submit" ] );
 	}
 
 	/**
@@ -663,11 +683,11 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	protected function updateModalFooterSaved() {
-		return Html::button( 'Close', [
+		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
 				'data-dismiss' => "modal",
 			] ) .
-		       Html::a( 'Edit', [ 'update', 'id' => $this->model->id ], [
+		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
 			       'class' => 'btn btn-primary',
 			       'role'  => 'modal-remote',
 		       ] );
@@ -679,11 +699,11 @@ class BaseAjaxCrudController extends Controller {
 	 * @return string
 	 */
 	protected function updateModalFooterEdit() {
-		return Html::button( 'Close', [
+		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
 				'data-dismiss' => "modal",
 			] ) .
-		       Html::button( 'Update', [ 'class' => 'btn btn-primary', 'type' => "submit" ] );
+		       Html::button( yii::t('app', 'Update'), [ 'class' => 'btn btn-primary', 'type' => "submit" ] );
 	}
 
 	/**
