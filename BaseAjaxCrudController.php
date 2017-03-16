@@ -339,7 +339,7 @@ class BaseAjaxCrudController extends Controller {
 		$this->findModel( $id );
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'app', "View {object} {name}", [
+		$this->view->title = yii::t( 'app', '{object} {name}', [
 			'object' => $this->model_name,
 			'name'   => ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
