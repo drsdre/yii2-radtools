@@ -16,6 +16,15 @@ use yii\helpers\ArrayHelper;
 
 class AjaxCrudHierarchyLinkController extends BaseAjaxCrudController {
 
+	/** @var string $grid_hierarchy_get_param name of query parameter for setting persistent hierarchy */
+	public $grid_hierarchy_get_param = 'hierarchy_filter';
+
+	/** @var string $grid_hierarchy_reset_get_param name of query parameter for resetting persistent hierarchy */
+	public $grid_hierarchy_reset_get_param = 'reset_grid_hierarchy';
+
+	/** @var string $hierarchy_link_session_key key id for caching persistent hierarchy link parameters */
+	public $hierarchy_link_session_key = 'HierarchyLink';
+
 	/**
 	 * @var array $hierarchy_links
 	 * Define a list of hierarchy links in the controller like this:
@@ -36,12 +45,6 @@ class AjaxCrudHierarchyLinkController extends BaseAjaxCrudController {
 	 *  ]
 	 */
 	protected $hierarchy_links = [];
-
-	/** @var string $grid_hierarchy_reset_param name of query parameter for resetting persistent hierarchy cache */
-	static $grid_hierarchy_reset_param = 'reset_grid_hierarchy';
-
-	/** @var string $hierarchy_link_session_key key id for caching persistent hierarchy link parameters */
-	static $hierarchy_link_session_key = 'HierarchyLink';
 
 	/** @var array $active_hierarchy_filters search query filters for DataProvider */
 	protected $active_hierarchy_filters = [];
@@ -69,20 +72,20 @@ class AjaxCrudHierarchyLinkController extends BaseAjaxCrudController {
 		$session = Yii::$app->session;
 
 		// Get current filters
-		$this->active_hierarchy_filters = $session->get( self::$hierarchy_link_session_key, [] );
+		$this->active_hierarchy_filters = $session->get( $this->hierarchy_link_session_key, [] );
 
 		// Do filters need to be reset?
-		if ( Yii::$app->request->getQueryParam( 'hierarchy_filter_reset' ) ) {
+		if ( Yii::$app->request->getQueryParam( $this->grid_hierarchy_reset_get_param ) ) {
 			foreach ( $this->hierarchy_links as $field => $value ) {
 				// Reset the defined filters for this controller
 				unset( $this->active_hierarchy_filters[ $field ] );
 			}
 			// Store the filters
-			$session->set( self::$hierarchy_link_session_key, $this->active_hierarchy_filters );
+			$session->set( $this->hierarchy_link_session_key, $this->active_hierarchy_filters );
 		}
 
 		// Process incoming filters
-		$new_hierarchy_filters = Yii::$app->request->getQueryParam( 'hierarchy_filter' );
+		$new_hierarchy_filters = Yii::$app->request->getQueryParam( $this->grid_hierarchy_get_param );
 		if ( $new_hierarchy_filters ) {
 			foreach ( $new_hierarchy_filters as $field => $value ) {
 				// Add recognized filters to session
@@ -105,11 +108,11 @@ class AjaxCrudHierarchyLinkController extends BaseAjaxCrudController {
 				}
 			};
 			// Store the filters
-			$session->set( self::$hierarchy_link_session_key, $this->active_hierarchy_filters );
+			$session->set( $this->hierarchy_link_session_key, $this->active_hierarchy_filters );
 		}
 
 		// Add debugging
-		Yii::trace( $session->get( self::$hierarchy_link_session_key ),
+		Yii::trace( $session->get( $this->hierarchy_link_session_key ),
 			'drsdre\radtools\HierarchyLinkTrait::parseLinks' );
 
 		// Make linked models avaiable in the view
