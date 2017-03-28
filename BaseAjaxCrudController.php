@@ -820,7 +820,8 @@ class BaseAjaxCrudController extends Controller {
 		$update_attribute_value = [];
 		$Model                  = new $this->modelClass;
 		foreach ( $Model->activeAttributes() as $attribute ) {
-			if ( ! empty( yii::$app->request->post( $attribute ) ) ) {
+			// Check if a value is provided
+			if ( ! is_null(yii::$app->request->post( $attribute ) ) ) {
 				$update_attribute_value[ $attribute ] = yii::$app->request->post( $attribute );
 			}
 		}
