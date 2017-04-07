@@ -56,19 +56,28 @@ class BaseAjaxCrudController extends Controller {
 	/** @var bool $persist_grid_order to persist grid order or not */
 	protected $persist_grid_order = false;
 
-	/** @var  ActiveRecord $model current selected record for CRUD operations */
+	/** @var ActiveRecord $model current selected record for CRUD operations */
 	protected $model;
 
-	/** @var	string $updateSuccessRedirect view to redirect to when update has succeeded */
+	/** @var string $updateSuccessRedirect view to redirect to when update was successful */
 	protected $updateSuccessRedirect = 'index';
 
-	/** @var	string $createSuccessRedirect view to redirect to when create has succeeded */
+	/** @var string $createSuccessRedirect default url to redirect to when create was successful */
 	protected $createSuccessRedirect = 'index';
 
-	/** @var	string $copySuccessRedirect view to redirect to when copy has succeeded */
+	/** @var string $copySuccessRedirect default url to redirect to when copy was successful */
 	protected $copySuccessRedirect = 'update';
 
-	/** @var	string $copySuccessRedirect view to redirect to when copy has succeeded */
+	/** @var string $copySuccessRedirect default url to redirect to when copy was successful */
+	protected $deleteSuccessRedirect = 'index';
+
+	/** @var string $bulkDeleteSuccessRedirect default url to redirect to when bulk delete was successful */
+	protected $bulkDeleteSuccessRedirect = 'index';
+
+	/** @var string $bulkUpdateSuccessRedirect default url to redirect to when bulk update was successful */
+	protected $bulkUpdateSuccessRedirect = 'index';
+
+	/** @var string $viewShowFullpageLink when true, adds a clickable icon in modal view to switch to full page view */
 	protected $viewShowFullpageLink = false;
 
 	/**
@@ -298,7 +307,7 @@ class BaseAjaxCrudController extends Controller {
 	public function actionIndex() {
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'app', "{object} Overview", [
+		$this->view->title = yii::t( 'app', '{object} Overview', [
 			'object' => $this->model_name,
 		] );
 		$this->addBreadCrumbs( [ $this->view->title ] );
@@ -371,7 +380,7 @@ class BaseAjaxCrudController extends Controller {
 	protected function viewModalFooter() {
 		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => "modal",
+				'data-dismiss' => 'modal',
 			] ) .
 		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
 			       'class' => 'btn btn-primary',
@@ -405,18 +414,24 @@ class BaseAjaxCrudController extends Controller {
 
 	/**
 	 * Creates a new model.
-	 * If creation is successful, the browser will be redirected to the 'index' page.
 	 *
-	 * @return string
+	 * @param string|null $return_url optional URL to return after success
+	 *
+	 * @return array|string|Response
 	 */
-	public function actionCreate() {
+	public function actionCreate( string $return_url = null ) {
 		$request = yii::$app->request;
+
+		// Setup URL to return after success
+		if ( is_null( $return_url ) ) {
+			$return_url = $this->createSuccessRedirect;
+		}
 
 		// Setup a new record
 		$this->model = $this->newModel();
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'app', "Add New {object}", [ 'object' => $this->model_name ] );
+		$this->view->title = yii::t( 'app', 'Add New {object}', [ 'object' => $this->model_name ] );
 		$this->addBreadCrumbs( [
 			[ 'label' => $this->model_name . ' Overview', 'url' => [ 'index' ] ],
 			yii::t( 'app', 'Create' ),
@@ -434,12 +449,12 @@ class BaseAjaxCrudController extends Controller {
 			// Load, validate and save model data
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 				// Success
-				if ( $this->createSuccessRedirect == 'index') {
+				if ( $return_url == 'index') {
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'forceClose'  => true,
 					];
-				} elseif ( in_array( $this->createSuccessRedirect, ['view', 'update'] ) ) {
+				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
 					// Success
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
@@ -455,7 +470,7 @@ class BaseAjaxCrudController extends Controller {
 				} else {
 					// TODO add redirect handling to ModalRemote.js
 					return [
-						'redirect' => $this->createSuccessRedirect,
+						'redirect' => $return_url,
 						'forceClose'  => true,
 					];
 				}
@@ -473,7 +488,7 @@ class BaseAjaxCrudController extends Controller {
 			// Load, validate and save model data
 			if ( $this->model->load( yii::$app->request->post() ) && $this->model->save() ) {
 				// Success, go back to index
-				return $this->redirect( [ $this->createSuccessRedirect, 'id' => $this->model->id ] );
+				return $this->redirect( [ $return_url, 'id' => $this->model->id ] );
 			} else {
 				// Start (or fail) show form
 				return $this->render( 'create', $this->createRenderData() );
@@ -483,21 +498,27 @@ class BaseAjaxCrudController extends Controller {
 
 	/**
 	 * Copy from a new model.
-	 * If creation is successful, the browser will be redirected to the 'index' page.
+	 *
+	 * @param string|null $return_url optional URL to return after success
 	 *
 	 * @return string
 	 */
-	public function actionCopy( $id ) {
+	public function actionCopy( $id, string $return_url = null ) {
 		$request = yii::$app->request;
 
 		$this->findModel( $id );
+
+		// Setup URL to return after success
+		if ( is_null( $return_url ) ) {
+			$return_url = $this->copySuccessRedirect;
+		}
 
 		// Mark record as new
 		$this->model->id          = null;
 		$this->model->isNewRecord = true;
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'app', "Create {object} copy of {name}", [
+		$this->view->title = yii::t( 'app', 'Create {object} copy of {name}', [
 			'object' => $this->model_name,
 			'name'   => ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
@@ -519,12 +540,12 @@ class BaseAjaxCrudController extends Controller {
 			// Load, validate and save model data
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 				// Success
-				if ( $this->copySuccessRedirect == 'index') {
+				if ( $return_url == 'index') {
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'forceClose'  => true,
 					];
-				} elseif ( in_array( $this->copySuccessRedirect, ['view', 'update'] ) ) {
+				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
 					// Success
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
@@ -532,7 +553,7 @@ class BaseAjaxCrudController extends Controller {
 						'content'     => '<div class="text-success">' . yii::t( 'app', 'Copy {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
-							                 $this->copySuccessRedirect,
+							                 $return_url,
 							                 $this->updateRenderData()
 
 						                 ),
@@ -541,7 +562,7 @@ class BaseAjaxCrudController extends Controller {
 				} else {
 					// TODO add redirect handling to ModalRemote.js
 					return [
-						'redirect' => $this->copySuccessRedirect,
+						'redirect' => $return_url,
 						'forceClose'  => true,
 					];
 				}
@@ -557,7 +578,7 @@ class BaseAjaxCrudController extends Controller {
 		} else {
 			//  Non-ajax request
 			if ( $this->model->load( yii::$app->request->post() ) && $this->model->save() ) {
-				return $this->redirect( [ $this->copySuccessRedirect, 'id' => $this->model->id ] );
+				return $this->redirect( [ $return_url, 'id' => $this->model->id ] );
 			} else {
 				return $this->render( 'create', $this->createRenderData() );
 			}
@@ -572,7 +593,7 @@ class BaseAjaxCrudController extends Controller {
 	protected function createModalFooterSaved() {
 		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => "modal",
+				'data-dismiss' => 'modal',
 			] ) .
 		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
 			       'class' => 'btn btn-primary',
@@ -588,25 +609,31 @@ class BaseAjaxCrudController extends Controller {
 	protected function createModalFooterEdit() {
 		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => "modal",
+				'data-dismiss' => 'modal',
 			] ) .
-		       Html::button( yii::t('app', 'Create'), [ 'class' => 'btn btn-primary', 'type' => "submit" ] );
+		       Html::button( yii::t('app', 'Create'), [ 'class' => 'btn btn-primary', 'type' => 'submit' ] );
 	}
 
 	/**
 	 * Updates an existing model.
-	 * If update is successful, the browser will be redirected to the 'view' page.
 	 *
-	 * @param integer $id
+	 * @param integer $id model ID
+	 * @param string|null $return_url optional URL to return after success
 	 *
 	 * @return string
 	 */
-	public function actionUpdate( $id ) {
+	public function actionUpdate( $id, string $return_url = null  ) {
 		$request = yii::$app->request;
+
 		$this->findModel( $id );
 
+		// Setup URL to return after success
+		if ( is_null( $return_url ) ) {
+			$return_url = $this->updateSuccessRedirect;
+		}
+
 		// Setup generic view settings
-		$this->view->title = yii::t( 'app', "Update {object} {name}", [
+		$this->view->title = yii::t( 'app', 'Update {object} {name}', [
 			'object' => $this->model_name,
 			'name'   => ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
@@ -632,12 +659,12 @@ class BaseAjaxCrudController extends Controller {
 			// Load, validate and save model data
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 				// Success
-				if ( $this->updateSuccessRedirect == 'index') {
+				if ( $return_url == 'index') {
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'forceClose'  => true,
 					];
-				} elseif ( in_array( $this->updateSuccessRedirect, ['view', 'update'] ) ) {
+				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
 					// Success
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
@@ -645,7 +672,7 @@ class BaseAjaxCrudController extends Controller {
 						'content'     => '<div class="text-success">' . yii::t( 'app', 'Update {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
-							                 $this->updateSuccessRedirect,
+							                 $return_url,
 							                 $this->updateRenderData()
 						                 ),
 						'footer'      => $this->updateModalFooterSaved(),
@@ -653,7 +680,7 @@ class BaseAjaxCrudController extends Controller {
 				} else {
 					// TODO add redirect handling to ModalRemote.js
 					return [
-						'redirect' => $this->updateSuccessRedirect,
+						'redirect' => $return_url,
 						'forceClose'  => true,
 					];
 				}
@@ -669,7 +696,7 @@ class BaseAjaxCrudController extends Controller {
 			//  Non-ajax request
 			if ( $this->model->load( $request->post() ) && $this->model->save() ) {
 				// Success
-				return $this->redirect( [ $this->updateSuccessRedirect, 'id' => $this->model->id ] );
+				return $this->redirect( [ $return_url, 'id' => $this->model->id ] );
 			} else {
 				// Start (or fail) show form
 				return $this->render( 'update', $this->updateRenderData() );
@@ -685,7 +712,7 @@ class BaseAjaxCrudController extends Controller {
 	protected function updateModalFooterSaved() {
 		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => "modal",
+				'data-dismiss' => 'modal',
 			] ) .
 		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
 			       'class' => 'btn btn-primary',
@@ -701,22 +728,29 @@ class BaseAjaxCrudController extends Controller {
 	protected function updateModalFooterEdit() {
 		return Html::button( yii::t('app', 'Close'), [
 				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => "modal",
+				'data-dismiss' => 'modal',
 			] ) .
-		       Html::button( yii::t('app', 'Update'), [ 'class' => 'btn btn-primary', 'type' => "submit" ] );
+		       Html::button( yii::t('app', 'Update'), [ 'class' => 'btn btn-primary', 'type' => 'submit' ] );
 	}
 
 	/**
 	 * Deletes an existing model.
-	 * If deletion is successful, the browser will be redirected to the 'index' page.
 	 *
-	 * @param integer $id
+	 * @param integer $id model ID
+	 * @param string|null $return_url optional URL to return after success
 	 *
 	 * @return string
 	 */
-	public function actionDelete( $id ) {
+	public function actionDelete( $id, string $return_url = null  ) {
 		$request = yii::$app->request;
+
 		$this->findModel( $id );
+
+		// Setup URL to return after success
+		if ( is_null( $return_url ) ) {
+			$return_url = $this->deleteSuccessRedirect;
+		}
+
 		try {
 			$this->model->delete();
 			if ( $request->isAjax && ! $request->isPjax ) {
@@ -726,7 +760,7 @@ class BaseAjaxCrudController extends Controller {
 				return [ 'forceClose' => true, 'forceReload' => '#crud-datatable-pjax', ];
 			} else {
 				// Non-ajax request
-				return $this->redirect( [ 'index' ] );
+				return $this->redirect( [ $return_url ] );
 			}
 		} catch ( \Exception $e ) {
 
@@ -750,7 +784,7 @@ class BaseAjaxCrudController extends Controller {
 					'content' => yii::t( 'app', 'Error: {message}', [ 'message' => $error ] ),
 					'footer'  => Html::button( 'Close', [
 						'class'        => 'btn btn-default pull-left',
-						'data-dismiss' => "modal",
+						'data-dismiss' => 'modal',
 					] ),
 				];
 			} else {
@@ -762,7 +796,7 @@ class BaseAjaxCrudController extends Controller {
 				)
 				;
 
-				return $this->redirect( [ 'index' ] );
+				return $this->redirect( [ $return_url ] );
 			}
 		}
 	}
@@ -770,12 +804,18 @@ class BaseAjaxCrudController extends Controller {
 	/**
 	 * Delete multiple existing model.
 	 * For ajax request will return json object
-	 * and for non-ajax request if deletion is successful, the browser will be redirected to the 'index' page.
+	 *
+	 * @param string|null $return_url optional URL to return after success
 	 *
 	 * @return string
 	 */
-	public function actionBulkDelete() {
+	public function actionBulkDelete( string $return_url = null ) {
 		$request = yii::$app->request;
+
+		// Setup URL to return after success
+		if ( is_null( $return_url ) ) {
+			$return_url = $this->bulkDeleteSuccessRedirect;
+		}
 
 		$not_found = [];
 
@@ -802,19 +842,27 @@ class BaseAjaxCrudController extends Controller {
 			];
 		} else {
 			// Non-ajax request
-			return $this->redirect( [ 'index' ] );
+			return $this->redirect( [ $return_url ] );
 		}
 	}
 
 	/**
 	 * Process bulk updates
+	 * For ajax request will return json object
+	 *
+	 * @param string|null $return_url optional URL to return after success
 	 *
 	 * @return \yii\web\Response|array
 	 *
 	 * @throws NotFoundHttpException
 	 */
-	public function actionBulkUpdate() {
+	public function actionBulkUpdate( string $return_url = null ) {
 		$request = yii::$app->request;
+
+		// Setup URL to return after success
+		if ( is_null( $return_url ) ) {
+			$return_url = $this->bulkUpdateSuccessRedirect;
+		}
 
 		// Parse the fields to update
 		$update_attribute_value = [];
@@ -882,7 +930,7 @@ class BaseAjaxCrudController extends Controller {
 					] ),
 					'footer'  => Html::button( 'Close', [
 						'class'        => 'btn btn-default pull-left',
-						'data-dismiss' => "modal",
+						'data-dismiss' => 'modal',
 					] ),
 				];
 			} else {
@@ -894,7 +942,7 @@ class BaseAjaxCrudController extends Controller {
 					] ),
 					'footer'  => Html::button( 'Close', [
 						'class'        => 'btn btn-default pull-left',
-						'data-dismiss' => "modal",
+						'data-dismiss' => 'modal',
 					] ),
 				];
 			}
@@ -918,7 +966,7 @@ class BaseAjaxCrudController extends Controller {
 				] );
 			}
 
-			return $this->redirect( [ 'index' ] );
+			return $this->redirect( [ $return_url ] );
 		}
 	}
 

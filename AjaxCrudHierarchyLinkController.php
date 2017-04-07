@@ -70,46 +70,59 @@ class AjaxCrudHierarchyLinkController extends BaseAjaxCrudController {
 		}
 
 		$session = Yii::$app->session;
+		$request = Yii::$app->request;
 
 		// Get current filters
 		$this->active_hierarchy_filters = $session->get( $this->hierarchy_link_session_key, [] );
 
 		// Do filters need to be reset?
-		if ( Yii::$app->request->getQueryParam( $this->grid_hierarchy_reset_get_param ) ) {
-			foreach ( $this->hierarchy_links as $field => $value ) {
+		if ( $request->getQueryParam( $this->grid_hierarchy_reset_get_param ) ) {
+			foreach ( $this->hierarchy_links as $incoming_filter_field => $incoming_filter_value ) {
 				// Reset the defined filters for this controller
-				unset( $this->active_hierarchy_filters[ $field ] );
+				unset( $this->active_hierarchy_filters[ $incoming_filter_field ] );
 			}
-			// Store the filters
-			$session->set( $this->hierarchy_link_session_key, $this->active_hierarchy_filters );
 		}
+
+		// Get the search filters
+		$SearchModel = new $this->searchModelClass;
+		$search_fitlers = $request->getQueryParam($SearchModel->formName());
 
 		// Process incoming filters
-		$new_hierarchy_filters = Yii::$app->request->getQueryParam( $this->grid_hierarchy_get_param );
-		if ( $new_hierarchy_filters ) {
-			foreach ( $new_hierarchy_filters as $field => $value ) {
-				// Add recognized filters to session
-				if ( array_key_exists( $field, $this->hierarchy_links ) ) {
+		$incoming_hierarchy_filters = $request->getQueryParam( $this->grid_hierarchy_get_param, [] );
+		foreach ( $incoming_hierarchy_filters as $incoming_filter_field => $incoming_filter_value ) {
 
-					// Check if filter for other fields need to be reset
-					if ( isset( $this->hierarchy_links[ $field ]['reset_fields'] ) ) {
-						foreach ( $this->hierarchy_links[ $field ]['reset_fields'] as $reset_field ) {
-							unset( $this->active_hierarchy_filters[ $reset_field ] );
-						}
-					}
-					// Check if a filter value is specified
-					if ( ! is_null( $value ) || $value !== '' ) {
-						// Add new filter
-						$this->active_hierarchy_filters[ $field ] = $value;
-					} else {
-						// Unset filter if no value given
-						unset( $this->active_hierarchy_filters[ $field ] );
+			// Add recognized filters to session
+			if ( array_key_exists( $incoming_filter_field, $this->hierarchy_links ) ) {
+
+				// Check if persisted filter needs to be reset when a specific hierarchy filter is set
+				if ( isset( $this->hierarchy_links[ $incoming_filter_field ]['reset_hierarchy_fields'] ) ) {
+					foreach ( $this->hierarchy_links[ $incoming_filter_field ]['reset_hierarchy_fields'] as $reset_field ) {
+						unset( $this->active_hierarchy_filters[ $reset_field ] );
 					}
 				}
-			};
-			// Store the filters
-			$session->set( $this->hierarchy_link_session_key, $this->active_hierarchy_filters );
-		}
+
+				// Check if a filter value is specified
+				if ( ! is_null( $incoming_filter_value ) || $incoming_filter_value !== '' ) {
+					// Add new filter
+					$this->active_hierarchy_filters[ $incoming_filter_field ] = $incoming_filter_value;
+				} else {
+					// Unset filter if no value given
+					unset( $this->active_hierarchy_filters[ $incoming_filter_field ] );
+				}
+
+				// If the hierarchy filter is overwritten by different manual search
+				if (
+					isset( $search_fitlers[ $incoming_filter_field ] ) &&
+					$incoming_filter_value != $search_fitlers[ $incoming_filter_field ]
+				) {
+					// Drop the hierarchy link
+					unset( $this->active_hierarchy_filters[ $incoming_filter_field ] );
+				}
+			}
+		};
+
+		// Store the filters
+		$session->set( $this->hierarchy_link_session_key, $this->active_hierarchy_filters );
 
 		// Add debugging
 		Yii::trace( $session->get( $this->hierarchy_link_session_key ),
@@ -128,25 +141,30 @@ class AjaxCrudHierarchyLinkController extends BaseAjaxCrudController {
 	 */
 	public function getActiveLinkedModels( $current_model = null ) {
 
+		// Skip if no hierarchy links are set
+		if ( ! $this->hierarchy_links ) {
+			return [];
+		}
+
 		// If linked model were calculated, skip processing
 		if ( count( $this->active_hierarchy_records ) ) {
 			return $this->active_hierarchy_records;
 		}
 
-		if ( ! isset( $this->hierarchy_links ) ) {
-			return [];
-		}
-
 		// Load models for the filter links
 		$this->active_hierarchy_records = [];
 		foreach ( $this->hierarchy_links as $filter_variable => $filter_model ) {
+
 			// Check if a hierarchy filter was provided for linked model
 			if ( isset( $this->active_hierarchy_filters[ $filter_variable ] ) ) {
+
 				// Add the record which matches the filter
 				$this->active_hierarchy_records[ $filter_variable ] =
 					$filter_model['model']::findOne( $this->active_hierarchy_filters[ $filter_variable ] );
+
 				// Check if linked model is available linked to main model
 			} elseif ( $current_model && $current_model->$filter_model['linked_model'] ) {
+
 				// Add the linked record to main model
 				$this->active_hierarchy_records[ $filter_variable ] = $current_model->$filter_model['linked_model'];
 			}
@@ -258,7 +276,7 @@ class AjaxCrudHierarchyLinkController extends BaseAjaxCrudController {
 		$dataProvider = parent::indexDataProvider( $searchModel );
 
 		// Skip if no hierarchy links are set
-		if ( ! isset( $this->hierarchy_links ) ) {
+		if ( ! $this->hierarchy_links ) {
 			return $dataProvider;
 		}
 
@@ -269,6 +287,7 @@ class AjaxCrudHierarchyLinkController extends BaseAjaxCrudController {
 			if ( ! isset( $this->active_hierarchy_filters[ $field ] ) ) {
 				continue;
 			}
+
 			// Check if field is defined in native model or external model
 			if ( isset( $hierarchy_link['index_query_external_model'] ) ) {
 				// External
