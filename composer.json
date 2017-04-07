@@ -14,7 +14,7 @@
         {
             "type": "vcs",
             "url": "https://github.com/drsdre/yii2-ajaxcrud"
-        },
+        }
     ],
     "require": {
         "php": ">=7.0.0",
