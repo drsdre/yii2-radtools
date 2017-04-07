@@ -468,10 +468,8 @@ class BaseAjaxCrudController extends Controller {
 						'footer'      => $this->CreateModalFooterSaved(),
 					];
 				} else {
-					// TODO add redirect handling to ModalRemote.js
 					return [
-						'redirect' => $return_url,
-						'forceClose'  => true,
+						'forceRedirect' => $return_url,
 					];
 				}
 			} else {
@@ -541,12 +539,13 @@ class BaseAjaxCrudController extends Controller {
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 				// Success
 				if ( $return_url == 'index') {
+					// Back to grid: reload grid and close modal
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'forceClose'  => true,
 					];
 				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
-					// Success
+					// Another modal: reload grid and render content for other modal
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'title'       => $this->view->title,
@@ -560,10 +559,9 @@ class BaseAjaxCrudController extends Controller {
 						'footer'      => $this->CreateModalFooterSaved(),
 					];
 				} else {
-					// TODO add redirect handling to ModalRemote.js
+					// A different return URL: redirect to this URL
 					return [
-						'redirect' => $return_url,
-						'forceClose'  => true,
+						'forceRedirect' => $return_url,
 					];
 				}
 			} else {
@@ -659,13 +657,15 @@ class BaseAjaxCrudController extends Controller {
 			// Load, validate and save model data
 			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 				// Success
+
 				if ( $return_url == 'index') {
+					// Back to grid: reload grid and close modal
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'forceClose'  => true,
 					];
 				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
-					// Success
+					// Another modal: reload grid and render content for other modal
 					return [
 						'forceReload' => $this->pjaxForceUpdateId(),
 						'title'       => $this->view->title,
@@ -678,10 +678,9 @@ class BaseAjaxCrudController extends Controller {
 						'footer'      => $this->updateModalFooterSaved(),
 					];
 				} else {
-					// TODO add redirect handling to ModalRemote.js
+					// A different return URL: redirect to this URL
 					return [
-						'redirect' => $return_url,
-						'forceClose'  => true,
+						'forceRedirect' => $return_url,
 					];
 				}
 			} else {
@@ -753,11 +752,25 @@ class BaseAjaxCrudController extends Controller {
 
 		try {
 			$this->model->delete();
+
+			// Success
 			if ( $request->isAjax && ! $request->isPjax ) {
+
 				// Ajax request
 				yii::$app->response->format = Response::FORMAT_JSON;
 
-				return [ 'forceClose' => true, 'forceReload' => '#crud-datatable-pjax', ];
+				if ( $return_url == 'index') {
+					// Back to grid: reload grid and close modal
+					return [
+						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceClose'  => true,
+					];
+				} else {
+					// A different return URL: redirect to this URL
+					return [
+						'forceRedirect' => $return_url,
+					];
+				}
 			} else {
 				// Non-ajax request
 				return $this->redirect( [ $return_url ] );
@@ -779,6 +792,7 @@ class BaseAjaxCrudController extends Controller {
 				// Ajax request
 				yii::$app->response->format = Response::FORMAT_JSON;
 
+				// Show error message in modal
 				return [
 					'title'   => yii::t( 'app', 'Delete failed' ),
 					'content' => yii::t( 'app', 'Error: {message}', [ 'message' => $error ] ),
@@ -835,11 +849,19 @@ class BaseAjaxCrudController extends Controller {
 			// Ajax request
 			yii::$app->response->format = Response::FORMAT_JSON;
 
-			return [
-				'forceReload' => $this->pjaxForceUpdateId(),
-				'forceClose'  => true,
-				'message'     => count( $not_found ) ? 'No found: ' . implode( ',', $not_found ) : '',
-			];
+			if ( $return_url == 'index') {
+				// Back to grid: reload grid and close modal
+				return [
+					'forceReload' => $this->pjaxForceUpdateId(),
+					'forceClose'  => true,
+					'message'     => count( $not_found ) ? 'Not found: ' . implode( ',', $not_found ) : '',
+				];
+			} else {
+				// A different return URL: redirect to this URL
+				return [
+					'forceRedirect' => $return_url,
+				];
+			}
 		} else {
 			// Non-ajax request
 			return $this->redirect( [ $return_url ] );
@@ -924,7 +946,7 @@ class BaseAjaxCrudController extends Controller {
 			if ( $errors ) {
 				return [
 					'forceReload' => $this->pjaxForceUpdateId(),
-					'title'   => yii::t( 'app', 'Delete failed' ),
+					'title'   => yii::t( 'app', 'Update failed' ),
 					'content' => yii::t( 'app', 'Error(s): {errors}', [
 						'errors' => print_r( $errors, true )
 					] ),
@@ -934,17 +956,25 @@ class BaseAjaxCrudController extends Controller {
 					] ),
 				];
 			} else {
-				return [
-					'forceReload' => $this->pjaxForceUpdateId(),
-					'title'   => yii::t( 'app', 'Bulk update succesful' ),
-					'content' => yii::t( 'app', '{records} records updated', [
-						'records' => $records_updated
-					] ),
-					'footer'  => Html::button( 'Close', [
-						'class'        => 'btn btn-default pull-left',
-						'data-dismiss' => 'modal',
-					] ),
-				];
+				if ( $return_url == 'index') {
+					// Back to grid: reload grid and show results
+					return [
+						'forceReload' => $this->pjaxForceUpdateId(),
+						'title'   => yii::t( 'app', 'Bulk update succesful' ),
+						'content' => yii::t( 'app', '{records} records updated', [
+							'records' => $records_updated
+						] ),
+						'footer'  => Html::button( 'Close', [
+							'class'        => 'btn btn-default pull-left',
+							'data-dismiss' => 'modal',
+						] ),
+					];
+				} else {
+					// A different return URL: redirect to this URL
+					return [
+						'forceRedirect' => $return_url,
+					];
+				}
 			}
 		} else {
 			// Non-ajax request
