@@ -462,7 +462,7 @@ class BaseAjaxCrudController extends Controller {
 						'content'     => '<div class="text-success">' . yii::t( 'app', 'Create {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
-							                 $this->createSuccessRedirect,
+							                 $return_url,
 							                 $this->updateRenderData()
 						                 ),
 						'footer'      => $this->CreateModalFooterSaved(),
