@@ -60,10 +60,10 @@ class BaseAjaxCrudController extends Controller {
 	protected $model;
 
 	/** @var string $updateSuccessRedirect view to redirect to when update was successful */
-	protected $updateSuccessRedirect = 'index';
+	protected $updateSuccessRedirect = 'view';
 
 	/** @var string $createSuccessRedirect default url to redirect to when create was successful */
-	protected $createSuccessRedirect = 'index';
+	protected $createSuccessRedirect = 'view';
 
 	/** @var string $copySuccessRedirect default url to redirect to when copy was successful */
 	protected $copySuccessRedirect = 'update';
@@ -80,224 +80,8 @@ class BaseAjaxCrudController extends Controller {
 	/** @var string $viewShowFullpageLink when true, adds a clickable icon in modal view to switch to full page view */
 	protected $viewShowFullpageLink = false;
 
-	/**
-	 * ID for pjax forceUpdate
-	 *
-	 * @return string
-	 */
-	protected function pjaxForceUpdateId() {
-		if ( $this->useDynagrid ) {
-			$searchModel = new $this->searchModelClass();
-
-			return '#' . $searchModel::tableName() . '-gridview-pjax';
-		} else {
-			return '#crud-datatable-pjax';
-		}
-	}
-
-	/**
-	 * Session key for filter persistence
-	 *
-	 * @return string
-	 */
-	public function dataProviderSessionKey() {
-		return self::$persist_grid_session_key . '_' . $this->className();
-	}
-
-	/**
-	 * Add breadcrumbs to the view
-	 *
-	 * @param array $crumbs
-	 */
-	public function addBreadCrumbs( $crumbs ) {
-		foreach ( $crumbs as $crumb ) {
-			$this->view->params['breadcrumbs'][] = $crumb;
-		}
-	}
-
-	/**
-	 * Output parsing for gridview editable calls
-	 *
-	 * @param array $posted
-	 * @param activeRecord $model
-	 *
-	 * @return string
-	 */
-	protected function indexEditableOutput( array $posted, $model ) {
-		// custom output to return to be displayed as the editable grid cell
-		// data. Normally this is empty - whereby whatever value is edited by
-		// in the input by user is updated automatically.
-
-		// Specific use case where you need to validate a specific
-		// editable column posted when you have more than one
-		// EditableColumn in the grid view.
-		return '';
-	}
-
-	/**
-	 * Provides array of data to be send to render index
-	 *
-	 * @param $searchModel
-	 * @param $dataProvider
-	 *
-	 * @return array
-	 */
-	protected function indexRenderData( ActiveRecord $searchModel, $dataProvider ) {
-		return [
-			'searchModel'  => $searchModel,
-			'dataProvider' => $dataProvider,
-		];
-	}
-
-	/**
-	 * Provides array of data to be send to view
-	 *
-	 * @return array
-	 */
-	protected function viewRenderData() {
-		return [
-			'model' => $this->model,
-		];
-	}
-
-	/**
-	 * Provides array of data to be send to render create
-	 *
-	 * @return array
-	 */
-	protected function createRenderData() {
-		return [
-			'model' => $this->model,
-		];
-	}
-
-	/**
-	 * Provides array of data to be send to render update
-	 *
-	 * @return string
-	 */
-	protected function updateRenderData() {
-		return [
-			'model' => $this->model,
-		];
-	}
-
-	/**
-	 * Get data provider for index
-	 *
-	 * @param ActiveRecord $searchModel
-	 *
-	 * @return mixed
-	 */
-	protected function indexDataProvider( ActiveRecord $searchModel ) {
-		return $this->setupDataProvider(
-			$searchModel,
-			'',
-			[],
-			$this->persist_grid_filters,
-			$this->persist_grid_page,
-			$this->persist_grid_order
-		);
-	}
-
-	/**
-	 * Setup a DataProvider with optional filter/page/order persistence
-	 *
-	 * @param ActiveRecord $searchModel
-	 * @param string $grid_id           when multiple dataProvider widgets are used on a page
-	 * @param array $base_where_filter  base filter which is applied with ActiveQuery andWhere after search
-	 * @param bool $persist_filters
-	 * @param bool $persist_page
-	 * @param bool $persist_order
-	 *
-	 * @return mixed
-	 */
-	public function setupDataProvider(
-		ActiveRecord $searchModel,
-		$grid_id = '',
-		array $base_where_filter = [],
-		$persist_filters = false,
-		$persist_page = false,
-		$persist_order = false
-	) {
-		$request = Yii::$app->request;
-		$session = Yii::$app->session;
-
-		// Setup persistence parameters
-		$session_key      = $this->dataProviderSessionKey() . $grid_id;
-		$persistent_reset = $request->get( $grid_id . self::$grid_persistent_reset_param, false );
-
-		if ( $persist_filters ) {
-			// Setup persistent filtering
-			if ( $persistent_reset ) {
-				// Clear query filters on filter reset
-				$session->remove( $session_key . '_filters');
-			} elseif ( ! $request->get( $searchModel->formName(), false ) ) {
-				// If no filters set in query, load persisted filters from session into search model
-				$searchModel->setAttributes( $session->get( $session_key . '_filters', [] ) );
-			} else {
-				// If filtering changed, remove page persistence
-				$session->remove( $session_key . '_page' );
-			}
-		}
-
-		// Create dataProvider
-		$dataProvider = $searchModel->search( $request->queryParams );
-
-		// Persist query filters from search
-		if ( $persist_filters ) {
-			$session->set( $session_key . '_filters', $searchModel->getAttributes(), $this->persist_grid_expiration );
-		}
-
-		// Apply default filters if provided
-		if (count($base_where_filter)) {
-			$dataProvider->query->andWhere($base_where_filter);
-		}
-
-		// Setup query parameters (especially for sub-grids)
-		$dataProvider->pagination->pageParam = $grid_id . '_page';
-		$dataProvider->sort->sortParam       = $grid_id . '_sort';
-
-		// Persistent paging
-		if ( $persist_page ) {
-			if ( $persistent_reset ) {
-				// Reset parameter
-				$session->remove( $session_key . '_page' );
-			}
-
-			// Get page number from query
-			$page_number = $request->get( $dataProvider->pagination->pageParam, false );
-
-			// If page_number is not in query, use persisted page selection
-			if ($page_number === false) {
-				$page_number = $session->get( $session_key . '_page', 0 );
-				if ( $page_number <= $dataProvider->pagination->pageCount ) {
-					$dataProvider->pagination->page = $page_number;
-				}
-			}
-
-			// Set page number and persist it
-			$session->set( $session_key . '_page', $page_number, $this->persist_grid_expiration );
-		}
-
-		// Persistent sorting
-		if ( $persist_order ) {
-			if ( $persistent_reset ) {
-				// Reset parameter
-				$session->remove( $session_key . '_sorting' );
-			}
-
-			// If no current order, use persisted order
-			if ( ! $dataProvider->sort->getAttributeOrders() ) {
-				$dataProvider->sort->setAttributeOrders( $session->get( $session_key . '_sorting', [] ) );
-			}
-
-			// Persist the current ordering
-			$session->set( $session_key . '_sorting', $dataProvider->sort->getAttributeOrders(), $this->persist_grid_expiration );
-		}
-
-		return $dataProvider;
-	}
+	// Actions
+	// ----------------------------------
 
 	/**
 	 * Lists all records (for gridview)
@@ -317,23 +101,6 @@ class BaseAjaxCrudController extends Controller {
 		$dataProvider = $this->indexDataProvider( $searchModel );
 
 		return $this->render( 'index', $this->indexRenderData( $searchModel, $dataProvider ) );
-	}
-
-	/**
-	 * Adds a button which takes the user out of modal to a full page view for given controller action
-	 *
-	 * @param string $action
-	 *
-	 * @return string
-	 */
-	protected function modalToFullpageLink($action) {
-		return $this->viewShowFullpageLink?
-			Html::a( '<span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>',
-				yii\helpers\Url::to(
-					[$action,  'id' => $this->model->id]
-				)
-			) . '&nbsp;':
-			'';
 	}
 
 	/**
@@ -370,46 +137,6 @@ class BaseAjaxCrudController extends Controller {
 			// Non-ajax request
 			return $this->render( 'view', $this->viewRenderData() );
 		}
-	}
-
-	/**
-	 * Builds view footer for modal after saved
-	 *
-	 * @return string
-	 */
-	protected function viewModalFooter() {
-		return Html::button( yii::t('app', 'Close'), [
-				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => 'modal',
-			] ) .
-		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
-			       'class' => 'btn btn-primary',
-			       'role'  => 'modal-remote',
-		       ] );
-	}
-
-	/**
-	 * Create a new model record
-	 * @return mixed
-	 */
-	protected function newModel() {
-		return new $this->modelClass();
-	}
-
-	/**
-	 * Create response for ajax save
-	 *
-	 * @return array
-	 */
-	protected function createAjaxSavedResponse() {
-		return [
-			'forceReload' => $this->pjaxForceUpdateId(),
-			'title'       => $this->view->title,
-			'content'     => '<span class="text-success">' . yii::t( 'app', 'Create {object} success',
-					[ 'object' => $this->model_name ] ) . '</span>',
-			'footer'      => $this->createModalFooterSaved(),
-
-		];
 	}
 
 	/**
@@ -451,13 +178,13 @@ class BaseAjaxCrudController extends Controller {
 				// Success
 				if ( $return_url == 'index') {
 					return [
-						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceReload' => $this->getGridviewPjaxId(),
 						'forceClose'  => true,
 					];
 				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
 					// Success
 					return [
-						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceReload' => $this->getGridviewPjaxId(),
 						'title'       => $this->view->title,
 						'content'     => '<div class="text-success">' . yii::t( 'app', 'Create {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
@@ -465,7 +192,7 @@ class BaseAjaxCrudController extends Controller {
 							                 $return_url,
 							                 $this->updateRenderData()
 						                 ),
-						'footer'      => $this->CreateModalFooterSaved(),
+						'footer'      => $this->createModalFooterSaved(),
 					];
 				} else {
 					return [
@@ -516,7 +243,7 @@ class BaseAjaxCrudController extends Controller {
 		$this->model->isNewRecord = true;
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'app', 'Create {object} copy of {name}', [
+		$this->view->title = yii::t( 'app', 'Create copy of {name} {object}', [
 			'object' => $this->model_name,
 			'name'   => ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
@@ -541,13 +268,13 @@ class BaseAjaxCrudController extends Controller {
 				if ( $return_url == 'index') {
 					// Back to grid: reload grid and close modal
 					return [
-						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceReload' => $this->getGridviewPjaxId(),
 						'forceClose'  => true,
 					];
 				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
 					// Another modal: reload grid and render content for other modal
 					return [
-						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceReload' => $this->getGridviewPjaxId(),
 						'title'       => $this->view->title,
 						'content'     => '<div class="text-success">' . yii::t( 'app', 'Copy {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
@@ -581,35 +308,6 @@ class BaseAjaxCrudController extends Controller {
 				return $this->render( 'create', $this->createRenderData() );
 			}
 		}
-	}
-
-	/**
-	 * Builds footer for modal after saved
-	 *
-	 * @return string
-	 */
-	protected function createModalFooterSaved() {
-		return Html::button( yii::t('app', 'Close'), [
-				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => 'modal',
-			] ) .
-		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
-			       'class' => 'btn btn-primary',
-			       'role'  => 'modal-remote',
-		       ] );
-	}
-
-	/**
-	 * Builds footer for modal on edit
-	 *
-	 * @return string
-	 */
-	protected function createModalFooterEdit() {
-		return Html::button( yii::t('app', 'Close'), [
-				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => 'modal',
-			] ) .
-		       Html::button( yii::t('app', 'Create'), [ 'class' => 'btn btn-primary', 'type' => 'submit' ] );
 	}
 
 	/**
@@ -661,13 +359,13 @@ class BaseAjaxCrudController extends Controller {
 				if ( $return_url == 'index') {
 					// Back to grid: reload grid and close modal
 					return [
-						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceReload' => $this->getGridviewPjaxId(),
 						'forceClose'  => true,
 					];
 				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
 					// Another modal: reload grid and render content for other modal
 					return [
-						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceReload' => $this->getGridviewPjaxId(),
 						'title'       => $this->view->title,
 						'content'     => '<div class="text-success">' . yii::t( 'app', 'Update {object} success',
 								[ 'object' => $this->model_name ] ) . '</div>'.
@@ -704,35 +402,6 @@ class BaseAjaxCrudController extends Controller {
 	}
 
 	/**
-	 * Builds footer for modal after saved
-	 *
-	 * @return string
-	 */
-	protected function updateModalFooterSaved() {
-		return Html::button( yii::t('app', 'Close'), [
-				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => 'modal',
-			] ) .
-		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
-			       'class' => 'btn btn-primary',
-			       'role'  => 'modal-remote',
-		       ] );
-	}
-
-	/**
-	 * Builds footer for modal on edit
-	 *
-	 * @return string
-	 */
-	protected function updateModalFooterEdit() {
-		return Html::button( yii::t('app', 'Close'), [
-				'class'        => 'btn btn-default pull-left',
-				'data-dismiss' => 'modal',
-			] ) .
-		       Html::button( yii::t('app', 'Update'), [ 'class' => 'btn btn-primary', 'type' => 'submit' ] );
-	}
-
-	/**
 	 * Deletes an existing model.
 	 *
 	 * @param integer $id model ID
@@ -762,7 +431,7 @@ class BaseAjaxCrudController extends Controller {
 				if ( $return_url == 'index') {
 					// Back to grid: reload grid and close modal
 					return [
-						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceReload' => $this->getGridviewPjaxId(),
 						'forceClose'  => true,
 					];
 				} else {
@@ -852,7 +521,7 @@ class BaseAjaxCrudController extends Controller {
 			if ( $return_url == 'index') {
 				// Back to grid: reload grid and close modal
 				return [
-					'forceReload' => $this->pjaxForceUpdateId(),
+					'forceReload' => $this->getGridviewPjaxId(),
 					'forceClose'  => true,
 					'message'     => count( $not_found ) ? 'Not found: ' . implode( ',', $not_found ) : '',
 				];
@@ -945,7 +614,7 @@ class BaseAjaxCrudController extends Controller {
 			// Check if errors are found
 			if ( $errors ) {
 				return [
-					'forceReload' => $this->pjaxForceUpdateId(),
+					'forceReload' => $this->getGridviewPjaxId(),
 					'title'   => yii::t( 'app', 'Update failed' ),
 					'content' => yii::t( 'app', 'Error(s): {errors}', [
 						'errors' => print_r( $errors, true )
@@ -959,7 +628,7 @@ class BaseAjaxCrudController extends Controller {
 				if ( $return_url == 'index') {
 					// Back to grid: reload grid and show results
 					return [
-						'forceReload' => $this->pjaxForceUpdateId(),
+						'forceReload' => $this->getGridviewPjaxId(),
 						'title'   => yii::t( 'app', 'Bulk update succesful' ),
 						'content' => yii::t( 'app', '{records} records updated', [
 							'records' => $records_updated
@@ -998,6 +667,338 @@ class BaseAjaxCrudController extends Controller {
 
 			return $this->redirect( [ $return_url ] );
 		}
+	}
+
+	// Public non-action functions
+	// --------------------------------------------------
+
+	/**
+	 * Add breadcrumbs to the view
+	 *
+	 * @param array $crumbs
+	 */
+	public function addBreadCrumbs( $crumbs ) {
+		foreach ( $crumbs as $crumb ) {
+			$this->view->params['breadcrumbs'][] = $crumb;
+		}
+	}
+
+	/**
+	 * Model id for setting up css div id
+	 *
+	 * @return string
+	 */
+	public function getModelId() {
+		if ( $this->useDynagrid ) {
+			$searchModel = new $this->searchModelClass();
+
+			return $searchModel->formName();
+		} else {
+			// Default for yii2-ajaxcrud
+			return 'crud';
+		}
+	}
+
+	/**
+	 * Session key for filter persistence
+	 *
+	 * @return string
+	 */
+	public function dataProviderSessionKey() {
+		return self::$persist_grid_session_key . '_' . $this->className();
+	}
+
+	/**
+	 * Setup a DataProvider with optional filter/page/order persistence
+	 *
+	 * @param ActiveRecord $searchModel
+	 * @param string $grid_id          when multiple dataProvider widgets are used on a page
+	 * @param array $base_where_filter base filter which is applied with ActiveQuery andWhere after search
+	 * @param bool $persist_filters
+	 * @param bool $persist_page
+	 * @param bool $persist_order
+	 *
+	 * @return mixed
+	 */
+	public function setupDataProvider(
+		ActiveRecord $searchModel,
+		$grid_id = '',
+		array $base_where_filter = [],
+		$persist_filters = false,
+		$persist_page = false,
+		$persist_order = false
+	) {
+		$request = Yii::$app->request;
+		$session = Yii::$app->session;
+
+		// Setup persistence parameters
+		$session_key      = $this->dataProviderSessionKey() . $grid_id;
+		$persistent_reset = $request->get( $grid_id . self::$grid_persistent_reset_param, false );
+
+		if ( $persist_filters ) {
+			// Setup persistent filtering
+			if ( $persistent_reset ) {
+				// Clear query filters on filter reset
+				$session->remove( $session_key . '_filters' );
+			} elseif ( ! $request->get( $searchModel->formName(), false ) ) {
+				// If no filters set in query, load persisted filters from session into search model
+				$searchModel->setAttributes( $session->get( $session_key . '_filters', [] ) );
+			} else {
+				// If filtering changed, remove page persistence
+				$session->remove( $session_key . '_page' );
+			}
+		}
+
+		// Create dataProvider
+		$dataProvider = $searchModel->search( $request->queryParams );
+
+		// Persist query filters from search
+		if ( $persist_filters ) {
+			$session->set( $session_key . '_filters', $searchModel->getAttributes(), $this->persist_grid_expiration );
+		}
+
+		// Apply default filters if provided
+		if ( count( $base_where_filter ) ) {
+			$dataProvider->query->andWhere( $base_where_filter );
+		}
+
+		// Setup query parameters (especially for sub-grids)
+		$dataProvider->pagination->pageParam = $grid_id . '_page';
+		$dataProvider->sort->sortParam       = $grid_id . '_sort';
+
+		// Persistent paging
+		if ( $persist_page ) {
+			if ( $persistent_reset ) {
+				// Reset parameter
+				$session->remove( $session_key . '_page' );
+			}
+
+			// Get page number from query
+			$page_number = $request->get( $dataProvider->pagination->pageParam, false );
+
+			// If page_number is not in query, use persisted page selection
+			if ( $page_number === false ) {
+				$page_number = $session->get( $session_key . '_page', 0 );
+				if ( $page_number <= $dataProvider->pagination->pageCount ) {
+					$dataProvider->pagination->page = $page_number;
+				}
+			}
+
+			// Set page number and persist it
+			$session->set( $session_key . '_page', $page_number, $this->persist_grid_expiration );
+		}
+
+		// Persistent sorting
+		if ( $persist_order ) {
+			if ( $persistent_reset ) {
+				// Reset parameter
+				$session->remove( $session_key . '_sorting' );
+			}
+
+			// If no current order, use persisted order
+			if ( ! $dataProvider->sort->getAttributeOrders() ) {
+				$dataProvider->sort->setAttributeOrders( $session->get( $session_key . '_sorting', [] ) );
+			}
+
+			// Persist the current ordering
+			$session->set( $session_key . '_sorting', $dataProvider->sort->getAttributeOrders(),
+				$this->persist_grid_expiration );
+		}
+
+		return $dataProvider;
+	}
+
+
+	// Extendable functions used in actions
+	// --------------------------------------------------
+
+	/**
+	 * Return a data provider for index action
+	 *
+	 * @param ActiveRecord $searchModel
+	 *
+	 * @return mixed
+	 */
+	protected function indexDataProvider( ActiveRecord $searchModel ) {
+		return $this->setupDataProvider(
+			$searchModel,
+			'',
+			[],
+			$this->persist_grid_filters,
+			$this->persist_grid_page,
+			$this->persist_grid_order
+		);
+	}
+
+	/**
+	 * Provides array of data to be send with 'index' action/view
+	 *
+	 * @param $searchModel
+	 * @param $dataProvider
+	 *
+	 * @return array
+	 */
+	protected function indexRenderData( ActiveRecord $searchModel, $dataProvider ) {
+		return [
+			'searchModel'  => $searchModel,
+			'dataProvider' => $dataProvider,
+			'model_id'     => $this->getModelId()
+		];
+	}
+
+	/**
+	 * Provides array of data to be send with 'view' action/view
+	 *
+	 * @return array
+	 */
+	protected function viewRenderData() {
+		return [
+			'model'    => $this->model,
+			'model_id' => $this->getModelId(),
+		];
+	}
+
+	/**
+	 * Builds modal footer when record is viewed
+	 *
+	 * @return string html
+	 */
+	protected function viewModalFooter() {
+		return Html::button( yii::t('app', 'Close'), [
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => 'modal',
+			] ) .
+		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
+			       'class' => 'btn btn-primary',
+			       'role'  => 'modal-remote',
+		       ] );
+	}
+
+	/**
+	 * Provides array of data to be send with 'create' action/view
+	 *
+	 * @return array
+	 */
+	protected function createRenderData() {
+		return [
+			'model'    => $this->model,
+			'model_id' => $this->getModelId(),
+		];
+	}
+
+	/**
+	 * Builds modal footer when record is created
+	 *
+	 * @return string html
+	 */
+	protected function createModalFooterEdit() {
+		return Html::button( yii::t('app', 'Close'), [
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => 'modal',
+			] ) .
+		       Html::button( yii::t('app', 'Create'), [ 'class' => 'btn btn-primary', 'type' => 'submit' ] );
+	}
+
+	/**
+	 * Builds modal footer when created record is saved
+	 *
+	 * @return string html
+	 */
+	protected function createModalFooterSaved() {
+		return Html::button( yii::t('app', 'Close'), [
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => 'modal',
+			] ) .
+		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
+			       'class' => 'btn btn-primary',
+			       'role'  => 'modal-remote',
+		       ] );
+	}
+
+	/**
+	 * Provides array of data to be send with 'update' action/view
+	 *
+	 * @return array
+	 */
+	protected function updateRenderData() {
+		return [
+			'model'    => $this->model,
+			'model_id' => $this->getModelId(),
+		];
+	}
+
+	/**
+	 * Builds modal footer when record is updated
+	 *
+	 * @return string html
+	 */
+	protected function updateModalFooterEdit() {
+		return Html::button( yii::t('app', 'Close'), [
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => 'modal',
+			] ) .
+		       Html::button( yii::t('app', 'Update'), [ 'class' => 'btn btn-primary', 'type' => 'submit' ] );
+	}
+
+	/**
+	 * Builds modal footer after record is saved
+	 *
+	 * @return string html
+	 */
+	protected function updateModalFooterSaved() {
+		return Html::button( yii::t('app', 'Close'), [
+				'class'        => 'btn btn-default pull-left',
+				'data-dismiss' => 'modal',
+			] ) .
+		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
+			       'class' => 'btn btn-primary',
+			       'role'  => 'modal-remote',
+		       ] );
+	}
+
+
+	// Extendable render data functions for actions
+	// --------------------------------------------------
+
+	/**
+	 * Gridview Pjax div id
+	 *
+	 * @return string
+	 */
+	protected function getGridviewPjaxId() {
+		return '#' . $this->getModelId() .
+		       // yii2-ajaxcrud uses datatable
+		       ( $this->useDynagrid ? '-gridview' : '-datatable' ) .
+		       '-pjax';
+	}
+
+	/**
+	 * Adds a button which takes the user out of modal to a full page view for given controller action
+	 *
+	 * @param string $action
+	 *
+	 * @return string
+	 */
+	protected function modalToFullpageLink($action) {
+		return $this->viewShowFullpageLink?
+			Html::a( '<span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>',
+				yii\helpers\Url::to(
+					[$action,  'id' => $this->model->id]
+				)
+			) . '&nbsp;':
+			'';
+	}
+
+
+	// Model record creation and retrieval
+	// --------------------------------------------------
+
+	/**
+	 * Create a new model record
+	 * @return mixed
+	 */
+	protected function newModel() {
+		return new $this->modelClass();
 	}
 
 	/**
