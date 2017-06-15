@@ -422,7 +422,7 @@ class RadCrudController extends Controller {
 			// Success
 			yii::$app->session->setFlash( 'alert', [
 				'body'    => yii::t( 'app', 'Record {record_name} updated',
-					[ 'record_name' => $record_name ]
+					[ 'record_name' => $this->getModelObjectName() ]
 				),
 				'options' => [ 'class' => 'alert-success' ],
 			] );
