@@ -1,7 +1,23 @@
 Yii2 RAD Tools
 ==============
-Rapid Application Development tools to quickly build interconnected crud UI's. 
-It uses yii2-ajaxcrud to generate the pop-up forms and optionally kartik-v/Dynagrid for the Gridview.
+Rapid Application Development controller for quick and complete crud interfaces
+to linked database models. 
+It supports [yii2-ajaxcrud](https://github.com/johnitvn/yii2-ajaxcrud) for modal based crud forms (pop-ups),
+ [kartik-v/Dynagrid](https://github.com/kartik-v/yii2-dynagrid) for the Gridview 
+and [kartik-v/yii2-detail-view](https://github.com/kartik-v/yii2-detail-view) for integrated view/update/create forms.
+
+The controller comes with the following build-in actions:
+* index: full page using build in or kartik-v GridView
+* view: either full page or using yii2-ajaxcrud modal
+* create: either full page or using yii2-ajaxcrud modal
+* copy: either full page or using yii2-ajaxcrud modal
+* update: either full page or using yii2-ajaxcrud modal
+* delete: either full page or using yii2-ajaxcrud modal
+* bulkUpdate: for bulk actions from GridView
+* bulkDelete: for bulk actions from GridView
+
+All actions can be configured to have specific success URL's and custom variables to be send to the view. 
+When a 'return_url' GET parameter with the action, it will overrule the success URL.
 
 Installation
 ------------
@@ -42,6 +58,7 @@ To use hierarchy links, simply extend from AjaxCrudHierarchyLinkController and s
 ```php
 class TableController extends drsdre\radtools\AjaxCrudHierarchyLinkController
 {   
+    protected $useDetailView = true;
     protected $useDynagrid = true;
     protected $modelClass = 'app\models\UserForm';
     protected $searchModelClass ='app\models\search\UserSearch';

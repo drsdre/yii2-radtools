@@ -1,6 +1,6 @@
 <?php
 /**
- * Ajax Crud Hierachy Link Controller
+ * Rapid Application Development Hierachy Link Controller
  * Provides a linking mechanism between related tables through GET parameter
  * hierarchy_filter[link_variable]=link_id.
  *
@@ -14,7 +14,7 @@ use yii;
 use yii\db\ActiveRecord;
 use yii\helpers\ArrayHelper;
 
-class AjaxCrudHierarchyLinkController extends BaseAjaxCrudController {
+class RadHierarchyLinkController extends RadCrudController {
 
 	/** @var string $grid_hierarchy_get_param name of query parameter for setting persistent hierarchy */
 	public $grid_hierarchy_get_param = 'hierarchy_filter';
