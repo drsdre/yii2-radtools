@@ -441,12 +441,12 @@ class RadCrudController extends Controller {
 	 *
 	 * @return string
 	 */
-	public function actionDelete( $id, string $return_url = null  ) {
+	public function actionDelete( $id = null, string $return_url = null  ) {
 		$request = yii::$app->request;
 
 		// If detail view, try to get id from custom_param
 		if ($this->useDetailView ) {
-			$id = Yii::$app->request->post(custom_param, $id);
+			$id = Yii::$app->request->post('id', $id);
 		}
 
 		$this->findModel( $id );
@@ -472,9 +472,9 @@ class RadCrudController extends Controller {
 						'messages' => [
 							'kv-detail-info' => yii::t( 'app', 'Record {model_object_name} deleted',
 									[ 'model_object_name' => $this->getModelObjectName() ]
-								) .
+								) . ' ' .
 							                    Html::a(
-								                    yii::t('app', 'Continue'),
+								                    yii::t('app', 'Return'),
 								                    $return_url,
 								                    ['class' => 'btn btn-sm btn-info']
 							                    )
