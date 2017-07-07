@@ -126,6 +126,11 @@ class RadCrudController extends Controller {
 			ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
 
+		// Set a model scenario if specified
+		if ( isset( $this->model_update_scenario ) ) {
+			$this->model->setScenario( $this->model_update_scenario );
+		}
+
 		// Updates from DetailView
 		if ( $this->useDetailView && $this->model->load( Yii::$app->request->post() ) ) {
 			if ( $this->model->save() ) {
