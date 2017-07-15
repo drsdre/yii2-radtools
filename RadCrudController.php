@@ -115,6 +115,7 @@ class RadCrudController extends Controller {
 	 */
 	public function actionView( $id ) {
 		$request = yii::$app->request;
+
 		$this->findModel( $id );
 
 		// Setup page title and first breadcrumb
@@ -132,7 +133,7 @@ class RadCrudController extends Controller {
 		}
 
 		// Updates from DetailView
-		if ( $this->useDetailView && $this->model->load( Yii::$app->request->post() ) ) {
+		if ( $this->useDetailView && $this->model->load( $request->post() ) ) {
 			if ( $this->model->save() ) {
 				Yii::$app->session->setFlash( 'kv-detail-success', yii::t( 'app', 'Record saved successfully' ) );
 			} else {
@@ -188,13 +189,27 @@ class RadCrudController extends Controller {
 			$this->model->setScenario( $this->model_create_scenario );
 		}
 
+		$success = false;
+		$errors = '';
+
+		// Load, validate and save model data
+		if ( ! $request->isGet && $this->model->load( $request->post() ) ) {
+			if ( $this->model->save() ) {
+				// Success
+				$success = true;
+			} else {
+				// Errors
+				$errors = $this->model-getErrors();
+			}
+		}
+
 		// Ajax Crud modal request
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			yii::$app->response->format = Response::FORMAT_JSON;
 
 			// Load, validate and save model data
-			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
+			if ( $success ) {
 				// Success
 				if ( $return_url == 'index') {
 					return [
@@ -232,7 +247,7 @@ class RadCrudController extends Controller {
 		//  Default page based request
 
 		// Load, validate and save model data
-		if ( $this->model->load( yii::$app->request->post() ) && $this->model->save() ) {
+		if ( $success ) {
 			// Success, go back to return_url
 			yii::$app->session->setFlash( 'alert', [
 				'body'    => yii::t( 'app', 'Record {model_object_name} created',
@@ -282,13 +297,27 @@ class RadCrudController extends Controller {
 			$this->model->setScenario( $this->model_create_scenario );
 		}
 
+		$success = false;
+		$errors = '';
+
+		// Load, validate and save model data
+		if ( ! $request->isGet && $this->model->load( $request->post() ) ) {
+			if ( $this->model->save() ) {
+				// Success
+				$success = true;
+			} else {
+				// Errors
+				$errors = $this->model-getErrors();
+			}
+		}
+
 		// Ajax Crud modal request
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			yii::$app->response->format = Response::FORMAT_JSON;
 
 			// Load, validate and save model data
-			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
+			if ( $success ) {
 				// Success
 				if ( $return_url == 'index') {
 					// Back to grid: reload grid and close modal
@@ -327,7 +356,7 @@ class RadCrudController extends Controller {
 		}
 
 		//  Default page based request
-		if ( $this->model->load( yii::$app->request->post() ) && $this->model->save() ) {
+		if ( $success ) {
 			// Success, go back to return_url
 			yii::$app->session->setFlash( 'alert', [
 				'body'    => yii::t( 'app', 'Record {model_object_name} copied',
@@ -377,16 +406,27 @@ class RadCrudController extends Controller {
 			$this->model->setScenario( $this->model_update_scenario );
 		}
 
+		$success = false;
+		$errors = '';
+
+		// Load, validate and save model data
+		if ( ! $request->isGet && $this->model->load( $request->post() ) ) {
+			if ( $this->model->save() ) {
+				// Success
+				$success = true;
+			} else {
+				// Errors
+				$errors = $this->model-getErrors();
+			}
+		}
+
 		// Ajax Crud modal request
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			yii::$app->response->format = Response::FORMAT_JSON;
 
-
-			// Load, validate and save model data
-			if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
-				// Success
-
+			if ( $success ) {
+				// Action success
 				if ( $return_url == 'index') {
 					// Back to grid: reload grid and close modal
 					return [
@@ -398,8 +438,9 @@ class RadCrudController extends Controller {
 					return [
 						'forceReload' => $this->getGridviewPjaxId(),
 						'title'       => $this->view->title,
-						'content'     => '<div class="text-success">' . yii::t( 'app', 'Update {object} success',
-								[ 'object' => $this->model_name ] ) . '</div>'.
+						'content'     => '<div class="text-success">' .
+						                 yii::t( 'app', 'Update {object} success',
+							                 [ 'object' => $this->model_name ] ) . '</div>'.
 						                 $this->renderAjax(
 							                 $return_url,
 							                 $this->updateRenderData()
@@ -423,7 +464,7 @@ class RadCrudController extends Controller {
 		}
 
 		//  Default page based request
-		if ( $this->model->load( $request->post() ) && $this->model->save() ) {
+		if ( $success ) {
 			// Success
 			yii::$app->session->setFlash( 'alert', [
 				'body'    => yii::t( 'app', 'Record {record_name} updated',
@@ -451,7 +492,7 @@ class RadCrudController extends Controller {
 
 		// If detail view, try to get id from custom_param
 		if ($this->useDetailView ) {
-			$id = Yii::$app->request->post('id', $id);
+			$id = $request->post('id', $id);
 		}
 
 		$this->findModel( $id );
@@ -466,64 +507,58 @@ class RadCrudController extends Controller {
 		$ajax_response = null;
 		$error_msg = false;
 
-		try {
-			if ( $this->model->delete() !== false ) {
-				// Delete success
+		$delete_result = $this->deleteModel();
 
-				// DetailView specific handling
-				if ( $this->useDetailView ) {
+		// Check for error message
+		if ( is_string($delete_result) ) {
+			$error_msg = yii::t( 'app', 'Cannot delete record {model_object_name}: {error}',
+				[
+					'model_object_name' => $this->getModelObjectName(),
+					'error' => $delete_result
+				]
+			);
+			// Check for result false
+		} elseif( $delete_result === false ) {
+			$error_msg = yii::t( 'app', 'Cannot delete record {model_object_name}',
+				[ 'model_object_name' => $this->getModelObjectName() ]
+			);
+		} else {
+			// Delete success
+
+			// DetailView specific handling
+			if ( $this->useDetailView ) {
+				$ajax_response = [
+					'success' => true,
+					'messages' => [
+						'kv-detail-info' => yii::t( 'app', 'Record {model_object_name} deleted',
+								[ 'model_object_name' => $this->getModelObjectName() ]
+							) . ' ' .
+						                    Html::a(
+							                    yii::t('app', 'Return'),
+							                    $return_url,
+							                    ['class' => 'btn btn-sm btn-info']
+						                    )
+					]
+				];
+			}
+			// Ajax Crud modal specific handling
+			elseif ( $modal_request ) {
+				if ( $return_url == 'index') {
+					// Back to grid: reload grid and close modal
 					$ajax_response = [
-						'success' => true,
-						'messages' => [
-							'kv-detail-info' => yii::t( 'app', 'Record {model_object_name} deleted',
-									[ 'model_object_name' => $this->getModelObjectName() ]
-								) . ' ' .
-							                    Html::a(
-								                    yii::t('app', 'Return'),
-								                    $return_url,
-								                    ['class' => 'btn btn-sm btn-info']
-							                    )
-						]
+						'forceReload' => $this->getGridviewPjaxId(),
+						'forceClose'  => true,
+					];
+				} else {
+					// A different return URL: redirect to this URL
+					$ajax_response = [
+						'forceRedirect' => $return_url,
 					];
 				}
-				// Ajax Crud modal specific handling
-				elseif ( $modal_request ) {
-					if ( $return_url == 'index') {
-						// Back to grid: reload grid and close modal
-						$ajax_response = [
-							'forceReload' => $this->getGridviewPjaxId(),
-							'forceClose'  => true,
-						];
-					} else {
-						// A different return URL: redirect to this URL
-						$ajax_response = [
-							'forceRedirect' => $return_url,
-						];
-					}
-				}
-			} else {
-				// Delete failed
-				$error_msg = yii::t( 'app', 'Cannot delete record {model_object_name}',
-					[ 'model_object_name' => $this->getModelObjectName() ]
-				);
 			}
-
-		} catch ( \Exception $e ) {
-
-			// Build error message
-			if ( $e->getCode() === 23000 && preg_match( '/CONSTRAINT `(.*)` FOREIGN/', $e->getMessage(),
-					$matches ) === 1
-			) {
-				// Handle SQL foreign key errors
-				$error = yii::t( 'app', 'The record is linked with {foreign_key}. Unlink before delete.',
-					[ 'foreign_key' => $matches[1] ] );
-			} else {
-				$error = $e->getMessage();
-			}
-
-			$error_msg =  yii::t( 'app', 'Error: {message}', [ 'message' => $error ] );
 		}
 
+		// Ajax responses
 
 		// DetailView request
 		if ( $this->useDetailView ) {
@@ -586,22 +621,37 @@ class RadCrudController extends Controller {
 	}
 
 	/**
+	 * Delete current model
+	 *
+	 * @return false|int|string int = amount of deletes, false or string is failure
+	 */
+	protected function deleteModel() {
+		try {
+			return $this->model->delete();
+		} catch ( \Exception $e ) {
+			// Build error message
+			if ( $e->getCode() === 23000 && preg_match( '/CONSTRAINT `(.*)` FOREIGN/', $e->getMessage(),
+					$matches ) === 1
+			) {
+				// Handle SQL foreign key errors
+				return yii::t( 'app', 'The record is linked with {foreign_key}. Unlink before delete.',
+					[ 'foreign_key' => $matches[1] ] );
+			} else {
+				return $e->getMessage();
+			}
+		}
+	}
+
+	/**
 	 * Delete multiple existing model.
 	 * For ajax request will return json object
 	 *
-	 * @param string|null $return_url optional URL to return after success
-	 *
 	 * @return string
 	 */
-	public function actionBulkDelete( string $return_url = null ) {
+	public function actionBulkDelete() {
 		$request = yii::$app->request;
 
-		// Setup URL to return after success
-		if ( is_null( $return_url ) ) {
-			$return_url = $this->bulkDeleteSuccessRedirect;
-		}
-
-		$not_found = [];
+		$errors = [];
 		$record_count = 0;
 
 		// For all given id's (pks)
@@ -610,182 +660,113 @@ class RadCrudController extends Controller {
 			try {
 				// Get the model and delete
 				$this->findModel( $pk );
-				$this->model->delete();
-				$record_count++;
+
+				$delete_result = $this->deleteModel();
+
+				// Check for error message
+				if ( is_string($delete_result) ) {
+					$errors[ $pk ] = yii::t( 'app', 'Delete failed {model_object_name}: {error}',
+						[
+							'model_object_name' => $this->getModelObjectName(),
+							'error' => $delete_result
+						]
+					);
+					// Check for result false
+				} elseif( $delete_result === false ) {
+					$errors[ $pk ] = yii::t( 'app', 'Delete failed {model_object_name}',
+						[ 'model_object_name' => $this->getModelObjectName() ]
+					);
+				} else {
+					$record_count++;
+				}
 			} catch ( yii\base\Exception $e ) {
-				$not_found[] = $pk;
+				$errors[ $pk ] = yii::t( 'app', 'Delete failed {model_object_name}: {error}', [
+					'error' => $e->getMessage(),
+				] );
 			}
 		}
 
-		if ( $request->isAjax && ! $request->isPjax ) {
-			// Ajax request
-			yii::$app->response->format = Response::FORMAT_JSON;
-
-			if ( $return_url == 'index') {
-				// Back to grid: reload grid and close modal
-				return [
-					'forceReload' => $this->getGridviewPjaxId(),
-					'forceClose'  => true,
-					'message'     => count( $not_found ) ? 'Not found: ' . implode( ',', $not_found ) : '',
-				];
-			} else {
-				// A different return URL: redirect to this URL
-				return [
-					'forceRedirect' => $return_url,
-				];
-			}
-		}
-
-		// Default page based request
-		yii::$app->session->setFlash( 'alert', [
-			'body'    => yii::t( 'app', '{record_count,plural,=0{no records} =1{one record} other{# records}} deleted',
-				[ 'record_count' => $record_count ]
-			),
-			'options' => [ 'class' => 'alert-success' ],
-		] );
-
-		if ( count($not_found) > 0 ) {
-			yii::$app->session->setFlash( 'alert', [
-				'body'    => yii::t( 'app', '{not_found,plural,=0{no records} =1{one record} other{# records}} not found',
-					[ 'not_found' => count($not_found) ]
-				),
-				'options' => [ 'class' => 'alert-warning' ],
-			] );
-		}
-
-		return $this->redirect( [ $return_url ] );
+		return $this->bulkActionResponse(
+			yii::t( 'app', 'Bulk Delete' ),
+			yii::t( 'app', '{record_count,plural,=0{no records} =1{one record} other{# records}} deleted',
+				[
+					'record_count' => $record_count,
+				] ),
+			$this->bulkDeleteSuccessRedirect,
+			$errors
+		);
 	}
 
 	/**
 	 * Process bulk updates
 	 * For ajax request will return json object
 	 *
-	 * @param string|null $return_url optional URL to return after success
-	 *
-	 * @return \yii\web\Response|array
+	 * @return \Response|array
 	 *
 	 * @throws NotFoundHttpException
 	 */
-	public function actionBulkUpdate( string $return_url = null ) {
+	public function actionBulkUpdate() {
 		$request = yii::$app->request;
-
-		// Setup URL to return after success
-		if ( is_null( $return_url ) ) {
-			$return_url = $this->bulkUpdateSuccessRedirect;
-		}
 
 		// Parse the fields to update
 		$update_attribute_value = [];
 		$model                  = new $this->modelClass;
 		foreach ( $model->activeAttributes() as $attribute ) {
 			// Check if a value is provided
-			if ( ! is_null(yii::$app->request->post( $attribute ) ) ) {
-				$update_attribute_value[ $attribute ] = yii::$app->request->post( $attribute );
+			if ( ! is_null( $request->post( $attribute ) ) ) {
+				$update_attribute_value[ $attribute ] = $request->post( $attribute );
 			}
 		}
+
+		$errors = [];
 
 		// CHeck if there are fields to update
 		if ( ! $update_attribute_value ) {
-			yii::$app->session->setFlash( 'alert', [
-				'body'    => yii::t( 'app', 'No fields found to update.' ),
-				'options' => [ 'class' => 'alert-warning' ],
-			] );
-
-			return $this->redirect( [ 'index' ] );
-		}
-
-		// Update the fields for all the selected records (pks)
-		$errors = [];
-		$records_updated = 0;
-		foreach ( explode( ',', $request->post( 'pks' ) ) as $id ) {
-			$this->findModel( (int) $id, false );
-
-			if ( $this->model ) {
-				// Set a model scenario if specified
-				if ( isset( $this->model_update_scenario ) ) {
-					$this->model->setScenario( $this->model_update_scenario );
-				}
-
-				// Update the variables
-				$this->model->attributes = $update_attribute_value;
-
-				// Check if record is changed
-				if ( $this->model->getDirtyAttributes() ) {
-					// Save data
-					if ( ! $this->model->save() ) {
-						// Track errors
-						$errors[] = $this->model->getErrors();
-					} else {
-						// Track updates
-						$records_updated++;
-					}
-				}
-			} else {
-				// Track if record is not found
-				$errors[] = 'id ' . $id . ' not found!';
-			}
-		}
-
-		if ( $request->isAjax && ! $request->isPjax ) {
-			// Ajax request
-			yii::$app->response->format = Response::FORMAT_JSON;
-
-			// Check if errors are found
-			if ( $errors ) {
-				return [
-					'forceReload' => $this->getGridviewPjaxId(),
-					'title'   => yii::t( 'app', 'Update failed' ),
-					'content' => yii::t( 'app', 'Error(s): {errors}', [
-						'errors' => print_r( $errors, true )
-					] ),
-					'footer'  => Html::button( 'Close', [
-						'class'        => 'btn btn-default pull-left',
-						'data-dismiss' => 'modal',
-					] ),
-				];
-			} else {
-				if ( $return_url == 'index') {
-					// Back to grid: reload grid and show results
-					return [
-						'forceReload' => $this->getGridviewPjaxId(),
-						'title'   => yii::t( 'app', 'Bulk update succesful' ),
-						'content' => yii::t( 'app', '{record_count,plural,=0{no records} =1{one record} other{# records}} updated', [
-							'record_count' => $records_updated
-						] ),
-						'footer'  => Html::button( 'Close', [
-							'class'        => 'btn btn-default pull-left',
-							'data-dismiss' => 'modal',
-						] ),
-					];
-				} else {
-					// A different return URL: redirect to this URL
-					return [
-						'forceRedirect' => $return_url,
-					];
-				}
-			}
-		}
-
-		// Non-ajax request
-
-		// Check if errors are found
-		if ( $errors ) {
-			yii::$app->session->setFlash( 'alert', [
-				'body'    => yii::t( 'app', 'Bulk update failed: {errors}.', [
-					'errors' => print_r( $errors, true ),
-				] ),
-				'options' => [ 'class' => 'alert-danger' ],
-			] );
+			$errors[] = yii::t( 'app', 'No fields found to update.' );
 		} else {
-			yii::$app->session->setFlash( 'alert', [
-				'body'    => yii::t( 'app', 'Bulk update successful. {record_count,plural,=0{No records} =1{One record} other{# records}} updated', [
-					'record_count' => $records_updated
-				] ),
-				'options' => [ 'class' => 'alert-success' ],
-			] );
+			// Update the fields for all the selected records (pks)
+			$records_updated = 0;
+			$pks = explode( ',', $request->post( 'pks' ) );
+			foreach ( $pks as $id ) {
+				$this->findModel( (int) $id, false );
+
+				if ( $this->model ) {
+					// Set a model scenario if specified
+					if ( isset( $this->model_update_scenario ) ) {
+						$this->model->setScenario( $this->model_update_scenario );
+					}
+
+					// Update the variables
+					$this->model->attributes = $update_attribute_value;
+
+					// Check if record is changed
+					if ( $this->model->getDirtyAttributes() ) {
+						// Save data
+						if ( ! $this->model->save() ) {
+							// Track errors
+							$errors[ $id ] = yii::t('app', 'Error updating record: {errors}',
+								[ 'errors' => print_r($this->model->getErrors(), true) ]
+							);
+						} else {
+							// Track updates
+							$records_updated ++;
+						}
+					}
+				} else {
+					// Track if record is not found
+					$errors[ $id ] = 'id ' . $id . ' not found!';
+				}
+			}
 		}
 
-		return $this->redirect( [ $return_url ] );
+		return $this->bulkActionResponse(
+			yii::t( 'app', 'Bulk Update' ),
+			yii::t( 'app', '{record_count,plural,=0{no records} =1{one record} other{# records}} updated', [
+				'record_count' => $records_updated,
+			] ),
+			$this->bulkUpdateSuccessRedirect,
+			$errors
+		);
 	}
 
 	// Public non-action functions
@@ -1082,6 +1063,72 @@ class RadCrudController extends Controller {
 			       'class' => 'btn btn-primary',
 			       'role'  => 'modal-remote',
 		       ] );
+	}
+
+	/**
+	 * Build response after bulk action
+	 *
+	 * @param string $title
+	 * @param string $message
+	 * @param string $default_return_url Optional, default 'return_url' get parameter is used
+	 * @param array $errors Optional, record_id => error message array
+	 *
+	 * @return array|Response
+	 */
+	protected function bulkActionResponse( string $title, string $message, string $default_return_url = 'index', array $errors = [] ) {
+		$request = yii::$app->request;
+		$response = yii::$app->response;
+		$session = yii::$app->session;
+
+		// Determine return_url
+		$return_url = $request->get('return_url', $default_return_url);
+
+		// Parse errors in a string
+		$error_string = $errors ? yii::t( 'app', 'Error(s):<br/>{errors}', [
+			'errors' => print_r( $errors, true ),
+		] ) : null;
+
+		if ( $request->isAjax && ! $request->isPjax ) {
+			// Ajax request
+			$response->format = Response::FORMAT_JSON;
+
+			if ( $return_url == 'index' ) {
+				// Back to grid: reload grid and close modal
+				return [
+					'forceReload' => $this->getGridviewPjaxId(),
+					'forceClose'  => true,
+					'title'       => $title,
+					'message'     => $message . '<br/>' . $error_string,
+					'footer'      => Html::button( 'Close', [
+						'class'        => 'btn btn-default pull-left',
+						'data-dismiss' => 'modal',
+					] ),
+				];
+			} else {
+				// A different return URL: redirect to this URL
+				return [
+					'forceRedirect' => $return_url,
+				];
+			}
+		}
+
+		// Prepare error and message flashes
+		if ( $message ) {
+			$session->setFlash( 'alert', [
+				'body'    => $message,
+				'options' => [ 'class' => 'alert-success' ],
+			] );
+		}
+
+		if ( $error_string ) {
+			$session->setFlash( 'alert', [
+				'body'    => $error_string,
+				'options' => [ 'class' => 'alert-danger' ],
+			] );
+		}
+
+		// Non-ajax request
+		return $this->redirect( [ $return_url ] );
 	}
 
 
