@@ -199,7 +199,7 @@ class RadCrudController extends Controller {
 				$success = true;
 			} else {
 				// Errors
-				$errors = $this->model-getErrors();
+				$errors = $this->model->getErrors();
 			}
 		}
 
@@ -307,7 +307,7 @@ class RadCrudController extends Controller {
 				$success = true;
 			} else {
 				// Errors
-				$errors = $this->model-getErrors();
+				$errors = $this->model->getErrors();
 			}
 		}
 
@@ -416,7 +416,7 @@ class RadCrudController extends Controller {
 				$success = true;
 			} else {
 				// Errors
-				$errors = $this->model-getErrors();
+				$errors = $this->model->getErrors();
 			}
 		}
 
