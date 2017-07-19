@@ -496,11 +496,11 @@ class RadCrudController extends Controller {
 
 				// Check for error message
 				if ( is_string($delete_result) ) {
-					throw new ($delete_result);
+					throw new Exception($delete_result);
 
 					// Check for result false
 				} elseif( $delete_result === false ) {
-					throw new ( yii::t('app', 'unknown') );
+					throw new Exception( yii::t('app', 'unknown') );
 				} else {
 					$record_count++;
 				}
