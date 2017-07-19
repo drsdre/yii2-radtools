@@ -546,13 +546,13 @@ class RadCrudController extends Controller {
 		}
 
 		$errors = [];
+		$records_updated = 0;
 
 		// CHeck if there are fields to update
 		if ( ! $update_attribute_value ) {
 			$errors[] = yii::t( 'app', 'No fields found to update.' );
 		} else {
 			// Update the fields for all the selected records (pks)
-			$records_updated = 0;
 			$pks = explode( ',', $request->post( 'pks' ) );
 			foreach ( $pks as $id ) {
 				$this->findModel( (int) $id, false );

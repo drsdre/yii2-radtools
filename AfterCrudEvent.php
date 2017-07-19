@@ -15,7 +15,7 @@ use yii\base\Event;
  * @author Andre Schuurman
  * @since 2.0
  */
-class afterCrudEvent extends Event
+class AfterCrudEvent extends Event
 {
 	/**
 	 * @var Action the action currently being executed
