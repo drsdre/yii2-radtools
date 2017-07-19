@@ -83,6 +83,11 @@ class RadCrudController extends Controller {
 	/** @var string $viewShowFullpageLink when true, adds a clickable icon in modal view to switch to full page view */
 	protected $viewShowFullpageLink = false;
 
+	/**
+	 * @event AfterCrudEvent an event that is triggered after a crud action is completed.
+	 */
+	const EVENT_AFTER_CRUD_SUCCESS = 'afterCrudSuccess';
+
 	// Actions
 	// ----------------------------------
 
@@ -113,13 +118,13 @@ class RadCrudController extends Controller {
 	 *
 	 * @return string
 	 */
-	public function actionView( $id ) {
+	public function actionView( int $id ) {
 		$request = yii::$app->request;
 
 		$this->findModel( $id );
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'app', '{model_object_name}',
+		$this->view->title = yii::t( 'app', 'View {model_object_name}',
 			[ 'model_object_name' => $this->getModelObjectName() ]
 		);
 		$this->addBreadCrumbs( [
@@ -127,58 +132,58 @@ class RadCrudController extends Controller {
 			ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
 
-		// Set a model scenario if specified
-		if ( isset( $this->model_update_scenario ) ) {
-			$this->model->setScenario( $this->model_update_scenario );
-		}
-
 		// Updates from DetailView
-		if ( $this->useDetailView && $this->model->load( $request->post() ) ) {
-			if ( $this->model->save() ) {
-				Yii::$app->session->setFlash( 'kv-detail-success', yii::t( 'app', 'Record saved successfully' ) );
-			} else {
-				Yii::$app->session->setFlash( 'kv-detail-warning', yii::t( 'app', 'Error(s) saving record' ) );
+		if ( $this->useDetailView ) {
+
+			// Set a model scenario if specified
+			if ( isset( $this->model_update_scenario ) ) {
+				$this->model->setScenario( $this->model_update_scenario );
 			}
 
-			return $this->redirect( [ 'view', 'id' => $this->model->id ] );
+			// Load the data
+			if ( $this->model->load( $request->post() ) ) {
+				// Save the data
+				$session = yii::$app->session;
+				if ( $this->model->save() ) {
+					// Save success
+					$session->setFlash( 'kv-detail-success', yii::t( 'app', 'Saved successfully' ) );
+					return $this->afterCrudSuccess(
+						$this->action->id,
+						$this->model,
+						$this->redirect( [ 'view', 'id' => $this->model->id ] )
+					);
+				} else {
+					// Save validation error(s)
+					$session->setFlash( 'kv-detail-warning', yii::t( 'app', 'Error(s) saving' ) );
+					return $this->redirect( [ 'view', 'id' => $this->model->id ] );
+				}
+			}
 		}
 
-		// Ajax Crud modal request
-		if ( $request->isAjax && ! $request->isPjax ) {
-
-			yii::$app->response->format = Response::FORMAT_JSON;
-
-			return [
-				'title'   => $this->modalToFullpageLink( 'view' ) . $this->view->title,
-				'content' => $this->renderAjax( 'view', $this->viewRenderData() ),
-				'footer'  => $this->viewModalFooter(),
-			];
-		}
-
-		//  Default page based request
-		return $this->render( 'view', $this->viewRenderData() );
+		// Render crud response
+		return $this->crudActionResponse(
+			'view',
+			$this->viewRenderData(),
+			$this->modalToFullpageLink( 'view' ) . $this->view->title,
+			$this->viewModalFooter()
+		);
 	}
 
 	/**
 	 * Creates a new model.
 	 *
-	 * @param string|null $return_url optional URL to return after success
-	 *
 	 * @return array|string|Response
 	 */
-	public function actionCreate( string $return_url = null ) {
+	public function actionCreate() {
 		$request = yii::$app->request;
-
-		// Setup URL to return after success
-		if ( is_null( $return_url ) ) {
-			$return_url = $this->createSuccessRedirect;
-		}
 
 		// Setup a new record
 		$this->model = $this->newModel();
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'app', 'Add New {object}', [ 'object' => $this->model_name ] );
+		$this->view->title = yii::t( 'app', 'Create new {model_name}', [
+			'model_name' => $this->model_name,
+		] );
 		$this->addBreadCrumbs( [
 			[ 'label' => $this->model_name . ' Overview', 'url' => [ 'index' ] ],
 			yii::t( 'app', 'Create' ),
@@ -189,102 +194,47 @@ class RadCrudController extends Controller {
 			$this->model->setScenario( $this->model_create_scenario );
 		}
 
-		$success = false;
-		$errors = '';
-
 		// Load, validate and save model data
-		if ( ! $request->isGet && $this->model->load( $request->post() ) ) {
-			if ( $this->model->save() ) {
-				// Success
-				$success = true;
-			} else {
-				// Errors
-				$errors = $this->model->getErrors();
-			}
+		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
+			// Success
+			return $this->crudActionSuccessResponse(
+				$this->updateRenderData(),
+				$this->createModalFooterSaved(),
+				yii::t( 'app', '{model_name} {model_object_name} created', [
+					'model_name'        => $this->model_name,
+					'model_object_name' => $this->getModelObjectName(),
+				] ),
+				$this->createSuccessRedirect
+			);
 		}
 
-		// Ajax Crud modal request
-		if ( $request->isAjax && ! $request->isPjax ) {
-			// Ajax request
-			yii::$app->response->format = Response::FORMAT_JSON;
-
-			// Load, validate and save model data
-			if ( $success ) {
-				// Success
-				if ( $return_url == 'index') {
-					return [
-						'forceReload' => $this->getGridviewPjaxId(),
-						'forceClose'  => true,
-					];
-				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
-					// Success
-					return [
-						'forceReload' => $this->getGridviewPjaxId(),
-						'title'       => $this->view->title,
-						'content'     => '<div class="text-success">' . yii::t( 'app', 'Create {object} success',
-								[ 'object' => $this->model_name ] ) . '</div>'.
-						                 $this->renderAjax(
-							                 $return_url,
-							                 $this->updateRenderData()
-						                 ),
-						'footer'      => $this->createModalFooterSaved(),
-					];
-				} else {
-					return [
-						'forceRedirect' => $return_url,
-					];
-				}
-			} else {
-				// Start (or fail) show form
-				return [
-					'title'   => $this->view->title,
-					'content' => $this->renderAjax( 'create', $this->createRenderData() ),
-					'footer'  => $this->createModalFooterEdit(),
-				];
-			}
-		}
-
-		//  Default page based request
-
-		// Load, validate and save model data
-		if ( $success ) {
-			// Success, go back to return_url
-			yii::$app->session->setFlash( 'alert', [
-				'body'    => yii::t( 'app', 'Record {model_object_name} created',
-					[ 'model_object_name' => $this->getModelObjectName() ]
-				),
-				'options' => [ 'class' => 'alert-success' ],
-			] );
-			return $this->redirect( [ $return_url, 'id' => $this->model->id ] );
-		} else {
-			// Start (or fail) show form
-			return $this->render( 'create', $this->createRenderData() );
-		}
+		// Render crud response
+		return $this->crudActionResponse(
+			'create',
+			$this->createRenderData(),
+			$this->view->title,
+			$this->createModalFooterEdit()
+		);
 	}
 
 	/**
 	 * Copy from a new model.
 	 *
-	 * @param string|null $return_url optional URL to return after success
+	 * @param int $id
 	 *
 	 * @return string
 	 */
-	public function actionCopy( $id, string $return_url = null ) {
+	public function actionCopy( int $id ) {
 		$request = yii::$app->request;
 
 		$this->findModel( $id );
-
-		// Setup URL to return after success
-		if ( is_null( $return_url ) ) {
-			$return_url = $this->copySuccessRedirect;
-		}
 
 		// Mark record as new
 		$this->model->id          = null;
 		$this->model->isNewRecord = true;
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'app', 'Create copy of {model_object_name}',
+		$this->view->title = yii::t( 'app', 'Copy {model_object_name}',
 			[ 'model_object_name' => $this->getModelObjectName() ]
 		);
 		$this->addBreadCrumbs( [
@@ -297,100 +247,48 @@ class RadCrudController extends Controller {
 			$this->model->setScenario( $this->model_create_scenario );
 		}
 
-		$success = false;
-		$errors = '';
+		$errors  = '';
 
 		// Load, validate and save model data
-		if ( ! $request->isGet && $this->model->load( $request->post() ) ) {
-			if ( $this->model->save() ) {
-				// Success
-				$success = true;
-			} else {
-				// Errors
-				$errors = $this->model->getErrors();
-			}
+		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
+			// Success
+			return $this->crudActionSuccessResponse(
+				$this->updateRenderData(),
+				$this->createModalFooterSaved(),
+				yii::t( 'app', '{model_name} {model_object_name} copied from {id}', [
+					'model_name'        => $this->model_name,
+					'model_object_name' => $this->getModelObjectName(),
+					'id'                => $id,
+				] ),
+				$this->copySuccessRedirect
+			);
 		}
 
-		// Ajax Crud modal request
-		if ( $request->isAjax && ! $request->isPjax ) {
-			// Ajax request
-			yii::$app->response->format = Response::FORMAT_JSON;
 
-			// Load, validate and save model data
-			if ( $success ) {
-				// Success
-				if ( $return_url == 'index') {
-					// Back to grid: reload grid and close modal
-					return [
-						'forceReload' => $this->getGridviewPjaxId(),
-						'forceClose'  => true,
-					];
-				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
-					// Another modal: reload grid and render content for other modal
-					return [
-						'forceReload' => $this->getGridviewPjaxId(),
-						'title'       => $this->view->title,
-						'content'     => '<div class="text-success">' . yii::t( 'app', 'Copy {object} success',
-								[ 'object' => $this->model_name ] ) . '</div>'.
-						                 $this->renderAjax(
-							                 $return_url,
-							                 $this->updateRenderData()
-
-						                 ),
-						'footer'      => $this->CreateModalFooterSaved(),
-					];
-				} else {
-					// A different return URL: redirect to this URL
-					return [
-						'forceRedirect' => $return_url,
-					];
-				}
-			} else {
-				// Start (or fail) show form
-				return [
-					'title'   => $this->view->title,
-					'content' => $this->renderAjax( 'create', $this->createRenderData() ),
-					'footer'  => $this->createModalFooterEdit(),
-				];
-			}
-		}
-
-		//  Default page based request
-		if ( $success ) {
-			// Success, go back to return_url
-			yii::$app->session->setFlash( 'alert', [
-				'body'    => yii::t( 'app', 'Record {model_object_name} copied',
-					[ 'model_object_name' => $this->getModelObjectName() ]
-				),
-				'options' => [ 'class' => 'alert-success' ],
-			] );
-			return $this->redirect( [ $return_url, 'id' => $this->model->id ] );
-		} else {
-			return $this->render( 'create', $this->createRenderData() );
-		}
+		// Render crud response
+		return $this->crudActionResponse(
+			'create',
+			$this->createRenderData(),
+			$this->view->title,
+			$this->createModalFooterEdit()
+		);
 	}
 
 	/**
 	 * Updates an existing model.
 	 *
 	 * @param integer $id model ID
-	 * @param string|null $return_url optional URL to return after success
 	 *
 	 * @return string
 	 */
-	public function actionUpdate( $id, string $return_url = null  ) {
+	public function actionUpdate( $id ) {
 		$request = yii::$app->request;
 
 		$this->findModel( $id );
 
-		// Setup URL to return after success
-		if ( is_null( $return_url ) ) {
-			$return_url = $this->updateSuccessRedirect;
-		}
-
 		// Setup generic view settings
-		$this->view->title = yii::t( 'app', 'Update {object_name}', [
-			'object_name' => $this->getModelObjectName(),
+		$this->view->title = yii::t( 'app', 'Update {model_object_name}', [
+			'model_object_name' => $this->getModelObjectName(),
 		] );
 		$this->addBreadCrumbs( [
 			[ 'label' => $this->model_name . ' Overview', 'url' => [ 'index' ] ],
@@ -406,88 +304,37 @@ class RadCrudController extends Controller {
 			$this->model->setScenario( $this->model_update_scenario );
 		}
 
-		$success = false;
-		$errors = '';
-
 		// Load, validate and save model data
-		if ( ! $request->isGet && $this->model->load( $request->post() ) ) {
-			if ( $this->model->save() ) {
-				// Success
-				$success = true;
-			} else {
-				// Errors
-				$errors = $this->model->getErrors();
-			}
-		}
-
-		// Ajax Crud modal request
-		if ( $request->isAjax && ! $request->isPjax ) {
-			// Ajax request
-			yii::$app->response->format = Response::FORMAT_JSON;
-
-			if ( $success ) {
-				// Action success
-				if ( $return_url == 'index') {
-					// Back to grid: reload grid and close modal
-					return [
-						'forceReload' => $this->getGridviewPjaxId(),
-						'forceClose'  => true,
-					];
-				} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
-					// Another modal: reload grid and render content for other modal
-					return [
-						'forceReload' => $this->getGridviewPjaxId(),
-						'title'       => $this->view->title,
-						'content'     => '<div class="text-success">' .
-						                 yii::t( 'app', 'Update {object} success',
-							                 [ 'object' => $this->model_name ] ) . '</div>'.
-						                 $this->renderAjax(
-							                 $return_url,
-							                 $this->updateRenderData()
-						                 ),
-						'footer'      => $this->updateModalFooterSaved(),
-					];
-				} else {
-					// A different return URL: redirect to this URL
-					return [
-						'forceRedirect' => $return_url,
-					];
-				}
-			} else {
-				// Start (or fail) show form
-				return [
-					'title' => $this->view->title,
-					'content' => $this->renderAjax( 'update', $this->updateRenderData() ),
-					'footer' => $this->updateModalFooterEdit(),
-				];
-			}
-		}
-
-		//  Default page based request
-		if ( $success ) {
+		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 			// Success
-			yii::$app->session->setFlash( 'alert', [
-				'body'    => yii::t( 'app', 'Record {record_name} updated',
-					[ 'record_name' => $this->getModelObjectName() ]
-				),
-				'options' => [ 'class' => 'alert-success' ],
-			] );
-			return $this->redirect( [ $return_url, 'id' => $this->model->id ] );
-		} else {
-			// Start (or fail) show form
-			return $this->render( 'update', $this->updateRenderData() );
+			return $this->crudActionSuccessResponse(
+				$this->updateRenderData(),
+				$this->updateModalFooterSaved(),
+				yii::t( 'app', '{model_name} {model_object_name} updated', [
+					'model_name'        => $this->model_name,
+					'model_object_name' => $this->getModelObjectName(),
+				] ),
+				$this->updateSuccessRedirect
+			);
 		}
+
+		// Render crud response
+		return $this->crudActionResponse(
+			'update',
+			$this->updateRenderData(),
+			$this->view->title,
+			$this->updateModalFooterEdit()
+		);
 	}
 
 	/**
 	 * Deletes an existing model.
 	 *
 	 * @param integer $id model ID
-	 * @param string|null $return_url optional URL to return after success
 	 *
 	 * @return string
 	 */
-	public function actionDelete( $id = null, string $return_url = null  ) {
+	public function actionDelete( $id = null ) {
 		$request = yii::$app->request;
 
 		// If detail view, try to get id from custom_param
@@ -498,52 +345,86 @@ class RadCrudController extends Controller {
 		$this->findModel( $id );
 
 		// Setup URL to return after success
-		if ( is_null( $return_url ) ) {
-			$return_url = $this->deleteSuccessRedirect;
-		}
+		$return_url = $request->get('return_url',$this->deleteSuccessRedirect);
 
 		// Determine if request is from modal
 		$modal_request = $request->isAjax && ! $request->isPjax;
 		$ajax_response = null;
-		$error_msg = false;
 
+		// Delete the record
 		$delete_result = $this->deleteModel();
 
 		// Check for error message
-		if ( is_string($delete_result) ) {
-			$error_msg = yii::t( 'app', 'Cannot delete record {model_object_name}: {error}',
+		$error_msg = false;
+		$succes_msg = '';
+		if ( is_string( $delete_result ) ) {
+			$error_msg = yii::t( 'app', 'Cannot delete {model_object_name}: {error}',
 				[
 					'model_object_name' => $this->getModelObjectName(),
-					'error' => $delete_result
+					'error'             => $delete_result,
 				]
 			);
 			// Check for result false
-		} elseif( $delete_result === false ) {
-			$error_msg = yii::t( 'app', 'Cannot delete record {model_object_name}',
+		} elseif ( $delete_result === false ) {
+			$error_msg = yii::t( 'app', 'Cannot delete {model_object_name}',
 				[ 'model_object_name' => $this->getModelObjectName() ]
 			);
 		} else {
-			// Delete success
+			$succes_msg = yii::t( 'app', '{model_object_name} deleted',
+				[ 'model_object_name' => $this->getModelObjectName() ]
+			);
+		}
 
-			// DetailView specific handling
-			if ( $this->useDetailView ) {
-				$ajax_response = [
-					'success' => true,
+
+		// Ajax responses
+
+		// DetailView request
+		if ( $this->useDetailView ) {
+			// Ajax request
+			yii::$app->response->format = Response::FORMAT_JSON;
+
+			if ( $error_msg ) {
+				return [
+					'success'  => false,
 					'messages' => [
-						'kv-detail-info' => yii::t( 'app', 'Record {model_object_name} deleted',
-								[ 'model_object_name' => $this->getModelObjectName() ]
-							) . ' ' .
-						                    Html::a(
-							                    yii::t('app', 'Return'),
-							                    $return_url,
-							                    ['class' => 'btn btn-sm btn-info']
-						                    )
-					]
+						'kv-detail-error' => $error_msg,
+					],
 				];
+			} else {
+				$this->afterCrudSuccess(
+					$this->action->id,
+					null,
+					[
+						'success'  => true,
+						'messages' => [
+							'kv-detail-info' => $succes_msg . ' ' .
+							                    Html::a(
+								                    yii::t( 'app', 'Return' ),
+								                    $return_url,
+								                    [ 'class' => 'btn btn-sm btn-info' ]
+							                    ),
+						],
+					]
+				);
 			}
-			// Ajax Crud modal specific handling
-			elseif ( $modal_request ) {
-				if ( $return_url == 'index') {
+		}
+
+		// Ajax Crud modal request
+		if ( $modal_request ) {
+			yii::$app->response->format = Response::FORMAT_JSON;
+
+			// If error_msg, send error message to modal
+			if ( $error_msg ) {
+				return [
+					'title'   => yii::t( 'app', 'Delete failed' ),
+					'content' => $error_msg,
+					'footer'  => Html::button( 'Close', [
+						'class'        => 'btn btn-default pull-left',
+						'data-dismiss' => 'modal',
+					] ),
+				];
+			} else {
+				if ( $return_url == 'index' ) {
 					// Back to grid: reload grid and close modal
 					$ajax_response = [
 						'forceReload' => $this->getGridviewPjaxId(),
@@ -555,90 +436,40 @@ class RadCrudController extends Controller {
 						'forceRedirect' => $return_url,
 					];
 				}
+
+				// Trigger crud success action and return to view
+				return $this->afterCrudSuccess(
+					$this->action->id,
+					$this->model,
+					$ajax_response
+				);
 			}
-		}
-
-		// Ajax responses
-
-		// DetailView request
-		if ( $this->useDetailView ) {
-			// Ajax request
-			yii::$app->response->format = Response::FORMAT_JSON;
-
-			if ( $error_msg ) {
-				return [
-					'success' => false,
-					'messages' => [
-						'kv-detail-error' => $error_msg
-					]
-				];
-			}
-
-			return $ajax_response;
-		}
-		// Ajax Crud modal request
-		elseif ( $modal_request ) {
-			yii::$app->response->format = Response::FORMAT_JSON;
-
-			// If error_msg, send error message to modal
-			if ( $error_msg ) {
-				return [
-					'title'   => yii::t( 'app', 'Delete {model_object_name} failed',
-						[ 'model_object_name' => $this->getModelObjectName() ]
-					),
-					'content' => $error_msg,
-					'footer'  => Html::button( 'Close', [
-						'class'        => 'btn btn-default pull-left',
-						'data-dismiss' => 'modal',
-					] ),
-				];
-			}
-
-			return $ajax_response;
 		}
 
 
 		// Default page based request
 
-		// If error_msg, send error flash otherwise success flash
 		if ( $error_msg ) {
-			//  Default page based request
+			// Set error flash
 			yii::$app->session->setFlash( 'alert', [
 				'body'    => $error_msg,
 				'options' => [ 'class' => 'alert-danger' ],
 			] );
 
+			return $this->redirect( [ $return_url ] );
 		} else {
+			// Set success flash
 			yii::$app->session->setFlash( 'alert', [
-				'body'    => yii::t( 'app', 'Record {model_object_name} deleted',
-					[ 'model_object_name' => $this->getModelObjectName() ]
-				),
+				'body'    => $succes_msg,
 				'options' => [ 'class' => 'alert-success' ],
 			] );
-		}
 
-		return $this->redirect( [ $return_url ] );
-	}
-
-	/**
-	 * Delete current model
-	 *
-	 * @return false|int|string int = amount of deletes, false or string is failure
-	 */
-	protected function deleteModel() {
-		try {
-			return $this->model->delete();
-		} catch ( \Exception $e ) {
-			// Build error message
-			if ( $e->getCode() === 23000 && preg_match( '/CONSTRAINT `(.*)` FOREIGN/', $e->getMessage(),
-					$matches ) === 1
-			) {
-				// Handle SQL foreign key errors
-				return yii::t( 'app', 'The record is linked with {foreign_key}. Unlink before delete.',
-					[ 'foreign_key' => $matches[1] ] );
-			} else {
-				return $e->getMessage();
-			}
+			// Trigger crud success action and return to view
+			return $this->afterCrudSuccess(
+				$this->action->id,
+				$this->model,
+				$this->redirect( [ $return_url ] )
+			);
 		}
 	}
 
@@ -665,22 +496,17 @@ class RadCrudController extends Controller {
 
 				// Check for error message
 				if ( is_string($delete_result) ) {
-					$errors[ $pk ] = yii::t( 'app', 'Delete failed {model_object_name}: {error}',
-						[
-							'model_object_name' => $this->getModelObjectName(),
-							'error' => $delete_result
-						]
-					);
+					throw new ($delete_result);
+
 					// Check for result false
 				} elseif( $delete_result === false ) {
-					$errors[ $pk ] = yii::t( 'app', 'Delete failed {model_object_name}',
-						[ 'model_object_name' => $this->getModelObjectName() ]
-					);
+					throw new ( yii::t('app', 'unknown') );
 				} else {
 					$record_count++;
 				}
 			} catch ( yii\base\Exception $e ) {
-				$errors[ $pk ] = yii::t( 'app', 'Delete failed {model_object_name}: {error}', [
+				$errors[ $pk ] = yii::t( 'app', 'Delete {model_object_name} failed: {error}', [
+					'model_object_name' => $this->getModelObjectName(),
 					'error' => $e->getMessage(),
 				] );
 			}
@@ -688,8 +514,9 @@ class RadCrudController extends Controller {
 
 		return $this->bulkActionResponse(
 			yii::t( 'app', 'Bulk Delete' ),
-			yii::t( 'app', '{record_count,plural,=0{no records} =1{one record} other{# records}} deleted',
+			yii::t( 'app', '{record_count,plural,=0{No} =1{One} other{#}} {mobel_name} deleted',
 				[
+					'mobel_name'   => $this->model_name,
 					'record_count' => $record_count,
 				] ),
 			$this->bulkDeleteSuccessRedirect,
@@ -773,6 +600,36 @@ class RadCrudController extends Controller {
 	// --------------------------------------------------
 
 	/**
+	 * This method is invoked right after a crud action is completed.
+	 *
+	 * The method will trigger the [[EVENT_AFTER_CRUD_SUCCESS]] event. The return value of the method
+	 * will be used as the action return value.
+	 *
+	 * If you override this method, your code should look like the following:
+	 *
+	 * ```php
+	 * public function afterCrudSuccess($action, $model, $result)
+	 * {
+	 *     $result = parent::afterCrudSuccess($action, $model, $result);
+	 *     // your custom code here
+	 *     return $result;
+	 * }
+	 * ```
+	 *
+	 * @param Action $action the action just executed.
+	 * @param ActiveRecord $model the model of the crud action.
+	 * @param mixed $result the result of the crud action.
+	 * @return mixed the processed action result.
+	 */
+	public function afterCrudSuccess( string $action, ActiveRecord $model = null, $result ) {
+		$event = new AfterCrudEvent($action);
+		$event->model = $model;
+		$event->result = $result;
+		$this->trigger(self::EVENT_AFTER_CRUD_SUCCESS, $event);
+		return $event->result;
+	}
+
+	/**
 	 * Add breadcrumbs to the view
 	 *
 	 * @param array $crumbs
@@ -796,6 +653,28 @@ class RadCrudController extends Controller {
 		} else {
 			// Default for yii2-ajaxcrud
 			return 'crud';
+		}
+	}
+
+	/**
+	 * Delete current model
+	 *
+	 * @return false|int|string int = amount of deletes, false or string is failure
+	 */
+	public function deleteModel() {
+		try {
+			return $this->model->delete();
+		} catch ( \Exception $e ) {
+			// Build error message
+			if ( $e->getCode() === 23000 && preg_match( '/CONSTRAINT `(.*)` FOREIGN/', $e->getMessage(),
+					$matches ) === 1
+			) {
+				// Handle SQL foreign key errors
+				return yii::t( 'app', 'The record is linked with {foreign_key}. Unlink before delete.',
+					[ 'foreign_key' => $matches[1] ] );
+			} else {
+				return $e->getMessage();
+			}
 		}
 	}
 
@@ -837,8 +716,8 @@ class RadCrudController extends Controller {
 		$persist_page = false,
 		$persist_order = false
 	) {
-		$request = Yii::$app->request;
-		$session = Yii::$app->session;
+		$request = yii::$app->request;
+		$session = yii::$app->session;
 
 		// Setup persistence parameters
 		$session_key      = $this->dataProviderSessionKey() . $grid_id;
@@ -1066,6 +945,114 @@ class RadCrudController extends Controller {
 	}
 
 	/**
+	 * Response for crud actions
+	 *
+	 * @param string $view
+	 * @param array $render_data
+	 * @param string $modal_title
+	 * @param string $modal_footer
+	 *
+	 * @return array|string|Response
+	 */
+	protected function crudActionResponse(
+		string $view,
+		array $render_data,
+		string $modal_title,
+		string $modal_footer
+	) {
+		$request = yii::$app->request;
+
+		// Ajax Crud modal request
+		if ( $request->isAjax && ! $request->isPjax ) {
+			// Ajax request
+			yii::$app->response->format = Response::FORMAT_JSON;
+
+			// Start (or fail) show form
+			return [
+				'title'   => $modal_title,
+				'content' => $this->renderAjax( $view, $render_data ),
+				'footer'  => $modal_footer,
+			];
+		}
+
+		//  Default page based request
+
+		// Start (or fail) show form
+		return $this->render( $view, $render_data );
+	}
+
+	/**
+	 * Success response for crud actions
+	 *
+	 * @param array $render_data
+	 * @param string $modal_footer
+	 * @param string $message
+	 * @param string $default_return_url
+	 *
+	 * @return array|string|Response
+	 */
+	protected function crudActionSuccessResponse(
+		array $render_data,
+		string $modal_footer,
+		string $message,
+		string $default_return_url
+	) {
+		$request = yii::$app->request;
+
+		// Determine return_url
+		$return_url = $request->get('return_url', $default_return_url);
+
+		// Ajax Crud modal request
+		if ( $request->isAjax && ! $request->isPjax ) {
+			// Ajax request
+			yii::$app->response->format = Response::FORMAT_JSON;
+
+			if ( $return_url == 'index') {
+				$result = [
+					'forceReload' => $this->getGridviewPjaxId(),
+					'forceClose'  => true,
+				];
+			} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
+				// Success
+				$result = [
+					'forceReload' => $this->getGridviewPjaxId(),
+					'title'       => $this->view->title,
+					'content'     => '<div class="text-success">' . $message . '</div>'.
+					                 $this->renderAjax(
+						                 $return_url,
+						                 $render_data
+					                 ),
+					'footer'      => $modal_footer,
+				];
+			} else {
+				$result = [
+					'forceRedirect' => $return_url,
+				];
+			}
+
+			return $this->afterCrudSuccess(
+				$this->action->id,
+				$this->model,
+				$result
+			);
+		}
+
+		//  Default page based request
+
+		// Success, go back to return_url
+		yii::$app->session->setFlash( 'alert', [
+			'body'    => $message,
+			'options' => [ 'class' => 'alert-success' ],
+		] );
+
+		return $this->afterCrudSuccess(
+			$this->action->id,
+			$this->model,
+			$this->redirect( [ $return_url, 'id' => $this->model->id ] )
+		);
+	}
+
+	/**
 	 * Build response after bulk action
 	 *
 	 * @param string $title
@@ -1073,7 +1060,7 @@ class RadCrudController extends Controller {
 	 * @param string $default_return_url Optional, default 'return_url' get parameter is used
 	 * @param array $errors Optional, record_id => error message array
 	 *
-	 * @return array|Response
+	 * @return array|string|Response
 	 */
 	protected function bulkActionResponse( string $title, string $message, string $default_return_url = 'index', array $errors = [] ) {
 		$request = yii::$app->request;
