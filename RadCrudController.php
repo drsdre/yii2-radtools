@@ -153,9 +153,8 @@ class RadCrudController extends Controller {
 						$this->redirect( [ 'view', 'id' => $this->model->id ] )
 					);
 				} else {
-					// Save validation error(s)
-					$session->setFlash( 'kv-detail-warning', yii::t( 'app', 'Error(s) saving' ) );
-					return $this->redirect( [ 'view', 'id' => $this->model->id ] );
+					// Flash validation error(s)
+					$session->setFlash( 'kv-detail-error', yii::t( 'app', 'Error(s) saving' ) );
 				}
 			}
 		}
@@ -728,12 +727,18 @@ class RadCrudController extends Controller {
 			if ( $persistent_reset ) {
 				// Clear query filters on filter reset
 				$session->remove( $session_key . '_filters' );
+
+				Yii::trace( 'Persistent filters reset', __METHOD__ );
 			} elseif ( ! $request->get( $searchModel->formName(), false ) ) {
 				// If no filters set in query, load persisted filters from session into search model
 				$searchModel->setAttributes( $session->get( $session_key . '_filters', [] ) );
+
+				Yii::trace( 'Persistent filters read from session', __METHOD__ );
 			} else {
 				// If filtering changed, remove page persistence
 				$session->remove( $session_key . '_page' );
+
+				Yii::trace( 'Persistent filters changed, clear persistent page', __METHOD__ );
 			}
 		}
 
@@ -759,6 +764,8 @@ class RadCrudController extends Controller {
 			if ( $persistent_reset ) {
 				// Reset parameter
 				$session->remove( $session_key . '_page' );
+
+				Yii::trace( 'Persistent page reset', __METHOD__ );
 			}
 
 			// Get page number from query
@@ -769,6 +776,8 @@ class RadCrudController extends Controller {
 				$page_number = $session->get( $session_key . '_page', 0 );
 				if ( $page_number <= $dataProvider->pagination->pageCount ) {
 					$dataProvider->pagination->page = $page_number;
+
+					Yii::trace( 'Persistent page ' . $page_number . ' read from session', __METHOD__ );
 				}
 			}
 
@@ -781,11 +790,15 @@ class RadCrudController extends Controller {
 			if ( $persistent_reset ) {
 				// Reset parameter
 				$session->remove( $session_key . '_sorting' );
+
+				Yii::trace( 'Persistent order reset', __METHOD__ );
 			}
 
 			// If no current order, use persisted order
 			if ( ! $dataProvider->sort->getAttributeOrders() ) {
 				$dataProvider->sort->setAttributeOrders( $session->get( $session_key . '_sorting', [] ) );
+
+				Yii::trace( 'Persistent order read from session', __METHOD__ );
 			}
 
 			// Persist the current ordering
