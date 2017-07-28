@@ -12,10 +12,10 @@ namespace drsdre\radtools;
 use yii;
 use yii\web\Controller;
 use yii\db\ActiveRecord;
+use yii\base\Exception;
 use yii\web\NotFoundHttpException;
 use yii\helpers\Html;
 use yii\web\Response;
-use yii\helpers\Json;
 use yii\helpers\ArrayHelper;
 
 /**
@@ -43,9 +43,6 @@ class RadCrudController extends Controller {
 
 	/** @var string $persist_grid_session_key key id for caching persistent parameters */
 	static $persist_grid_session_key = 'AjaxCrudDP';
-
-	/** @var int $persist_grid_expiration expiration in seconds to forget persistent grid parameter after last usage */
-	protected $persist_grid_expiration = 7200;
 
 	/** @var bool $persist_grid_filters to persist grid filter or not */
 	protected $persist_grid_filters = false;
@@ -246,8 +243,6 @@ class RadCrudController extends Controller {
 			$this->model->setScenario( $this->model_create_scenario );
 		}
 
-		$errors  = '';
-
 		// Load, validate and save model data
 		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 			// Success
@@ -331,7 +326,7 @@ class RadCrudController extends Controller {
 	 *
 	 * @param integer $id model ID
 	 *
-	 * @return string
+	 * @return string|array
 	 */
 	public function actionDelete( $id = null ) {
 		$request = yii::$app->request;
@@ -504,10 +499,14 @@ class RadCrudController extends Controller {
 					$record_count++;
 				}
 			} catch ( yii\base\Exception $e ) {
-				$errors[ $pk ] = yii::t( 'app', 'Delete {model_object_name} failed: {error}', [
-					'model_object_name' => $this->getModelObjectName(),
-					'error' => $e->getMessage(),
-				] );
+				$errors[ $pk ] = Html::errorSummary(
+					$this->model,
+					['header' =>
+						 yii::t('app', 'Delete \'{object}\' error:', [
+						 	'object' => ArrayHelper::getValue( $this->model, $this->model_field_name )
+						 ] )
+					]
+				);
 			}
 		}
 
@@ -527,7 +526,7 @@ class RadCrudController extends Controller {
 	 * Process bulk updates
 	 * For ajax request will return json object
 	 *
-	 * @return \Response|array
+	 * @return Response|array
 	 *
 	 * @throws NotFoundHttpException
 	 */
@@ -537,6 +536,7 @@ class RadCrudController extends Controller {
 		// Parse the fields to update
 		$update_attribute_value = [];
 		$model                  = new $this->modelClass;
+		/** @var ActiveRecord $model */
 		foreach ( $model->activeAttributes() as $attribute ) {
 			// Check if a value is provided
 			if ( ! is_null( $request->post( $attribute ) ) ) {
@@ -570,8 +570,13 @@ class RadCrudController extends Controller {
 						// Save data
 						if ( ! $this->model->save() ) {
 							// Track errors
-							$errors[ $id ] = yii::t('app', 'Error updating record: {errors}',
-								[ 'errors' => print_r($this->model->getErrors(), true) ]
+							$errors[ $id ] = Html::errorSummary(
+								$this->model,
+								['header' =>
+									 yii::t('app', 'Update \'{object}\' error:', [
+										 'object' => ArrayHelper::getValue( $this->model, $this->model_field_name )
+									 ] )
+								]
 							);
 						} else {
 							// Track updates
@@ -615,7 +620,7 @@ class RadCrudController extends Controller {
 	 * }
 	 * ```
 	 *
-	 * @param Action $action the action just executed.
+	 * @param string $action the action just executed.
 	 * @param ActiveRecord $model the model of the crud action.
 	 * @param mixed $result the result of the crud action.
 	 * @return mixed the processed action result.
@@ -647,7 +652,7 @@ class RadCrudController extends Controller {
 	public function getModelId() {
 		if ( $this->useDynagrid ) {
 			$searchModel = new $this->searchModelClass();
-
+			/** @var ActiveRecord $searchModel */
 			return $searchModel->formName();
 		} else {
 			// Default for yii2-ajaxcrud
@@ -747,7 +752,7 @@ class RadCrudController extends Controller {
 
 		// Persist query filters from search
 		if ( $persist_filters ) {
-			$session->set( $session_key . '_filters', $searchModel->getAttributes(), $this->persist_grid_expiration );
+			$session->set( $session_key . '_filters', $searchModel->getAttributes() );
 		}
 
 		// Apply default filters if provided
@@ -782,7 +787,7 @@ class RadCrudController extends Controller {
 			}
 
 			// Set page number and persist it
-			$session->set( $session_key . '_page', $page_number, $this->persist_grid_expiration );
+			$session->set( $session_key . '_page', $page_number );
 		}
 
 		// Persistent sorting
@@ -802,8 +807,7 @@ class RadCrudController extends Controller {
 			}
 
 			// Persist the current ordering
-			$session->set( $session_key . '_sorting', $dataProvider->sort->getAttributeOrders(),
-				$this->persist_grid_expiration );
+			$session->set( $session_key . '_sorting', $dataProvider->sort->getAttributeOrders() );
 		}
 
 		return $dataProvider;
@@ -1075,7 +1079,12 @@ class RadCrudController extends Controller {
 	 *
 	 * @return array|string|Response
 	 */
-	protected function bulkActionResponse( string $title, string $message, string $default_return_url = 'index', array $errors = [] ) {
+	protected function bulkActionResponse(
+		string $title,
+		string $message,
+		string $default_return_url = 'index',
+		array $errors = []
+	) {
 		$request = yii::$app->request;
 		$response = yii::$app->response;
 		$session = yii::$app->session;
@@ -1084,9 +1093,10 @@ class RadCrudController extends Controller {
 		$return_url = $request->get('return_url', $default_return_url);
 
 		// Parse errors in a string
-		$error_string = $errors ? yii::t( 'app', 'Error(s):<br/>{errors}', [
-			'errors' => print_r( $errors, true ),
-		] ) : null;
+		$error_string = $errors ?
+			$title .
+			Html::ul( $errors, [ 'encode' => false, ] ) :
+			null;
 
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
@@ -1105,6 +1115,21 @@ class RadCrudController extends Controller {
 					] ),
 				];
 			} else {
+				// Prepare error and message flashes
+				if ( $message ) {
+					$session->setFlash( 'alert', [
+						'body'    => $message,
+						'options' => [ 'class' => 'alert-success' ],
+					] );
+				}
+
+				if ( $error_string ) {
+					$session->setFlash( 'alert', [
+						'body'    => $error_string,
+						'options' => [ 'class' => 'alert-danger' ],
+					] );
+				}
+
 				// A different return URL: redirect to this URL
 				return [
 					'forceRedirect' => $return_url,
@@ -1154,13 +1179,13 @@ class RadCrudController extends Controller {
 	 *
 	 * @return string
 	 */
-	protected function modalToFullpageLink($action) {
-		return $this->viewShowFullpageLink?
-			Html::a( '<span class="glyphicon glyphicon-fullscreen" aria-hidden="true"></span>',
+	protected function modalToFullpageLink( $action ) {
+		return $this->viewShowFullpageLink ?
+			Html::a( '<span class="glyphicon glyphicon-fullscreen"></span>',
 				yii\helpers\Url::to(
-					[$action,  'id' => $this->model->id]
+					[ $action, 'id' => $this->model->id ]
 				)
-			) . '&nbsp;':
+			) . '&nbsp;' :
 			'';
 	}
 
