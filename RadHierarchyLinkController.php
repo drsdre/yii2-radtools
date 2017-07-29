@@ -171,10 +171,10 @@ class RadHierarchyLinkController extends RadCrudController {
 					$filter_model['model']::findOne( $this->active_hierarchy_filters[ $filter_variable ] );
 
 				// Check if linked model is available linked to main model
-			} elseif ( $current_model && $current_model->$filter_model['linked_model'] ) {
+			} elseif ( $current_model && ArrayHelper::getValue( $current_model, $filter_model['linked_model'] ) ) {
 
 				// Add the linked record to main model
-				$this->active_hierarchy_records[ $filter_variable ] = $current_model->$filter_model['linked_model'];
+				$this->active_hierarchy_records[ $filter_variable ] = ArrayHelper::getValue( $current_model, $filter_model['linked_model'] );
 			}
 		}
 
