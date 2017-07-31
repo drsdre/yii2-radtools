@@ -275,7 +275,7 @@ class RadCrudController extends Controller {
 	 *
 	 * @return string
 	 */
-	public function actionUpdate( $id ) {
+	public function actionUpdate( int $id ) {
 		$request = yii::$app->request;
 
 		$this->findModel( $id );
@@ -328,7 +328,7 @@ class RadCrudController extends Controller {
 	 *
 	 * @return string|array
 	 */
-	public function actionDelete( $id = null ) {
+	public function actionDelete( int $id = null ) {
 		$request = yii::$app->request;
 
 		// If detail view, try to get id from custom_param
@@ -339,7 +339,7 @@ class RadCrudController extends Controller {
 		$this->findModel( $id );
 
 		// Setup URL to return after success
-		$return_url = $request->get('return_url',$this->deleteSuccessRedirect);
+		$return_url = $request->get( 'return_url', $this->deleteSuccessRedirect );
 
 		// Determine if request is from modal
 		$modal_request = $request->isAjax && ! $request->isPjax;
@@ -450,7 +450,7 @@ class RadCrudController extends Controller {
 				'options' => [ 'class' => 'alert-danger' ],
 			] );
 
-			return $this->redirect( [ $return_url ] );
+			return $this->redirectReturnUrl( $return_url );
 		} else {
 			// Set success flash
 			yii::$app->session->setFlash( 'alert', [
@@ -462,7 +462,7 @@ class RadCrudController extends Controller {
 			return $this->afterCrudSuccess(
 				$this->action->id,
 				$this->model,
-				$this->redirect( [ $return_url ] )
+				$this->redirectReturnUrl( $return_url )
 			);
 		}
 	}
@@ -626,11 +626,14 @@ class RadCrudController extends Controller {
 	 * @return mixed the processed action result.
 	 */
 	public function afterCrudSuccess( string $action, ActiveRecord $model = null, $result ) {
+		// Create the EVENT_AFTER_CRUD_SUCCESS event
 		$event = new AfterCrudEvent($action);
 		$event->model = $model;
 		$event->result = $result;
 		$this->trigger(self::EVENT_AFTER_CRUD_SUCCESS, $event);
-		return $event->result;
+
+		// Return/execute result
+		return $result;
 	}
 
 	/**
@@ -638,7 +641,7 @@ class RadCrudController extends Controller {
 	 *
 	 * @param array $crumbs
 	 */
-	public function addBreadCrumbs( $crumbs ) {
+	public function addBreadCrumbs( array $crumbs ) {
 		foreach ( $crumbs as $crumb ) {
 			$this->view->params['breadcrumbs'][] = $crumb;
 		}
@@ -714,11 +717,11 @@ class RadCrudController extends Controller {
 	 */
 	public function setupDataProvider(
 		ActiveRecord $searchModel,
-		$grid_id = '',
+		string $grid_id = '',
 		array $base_where_filter = [],
-		$persist_filters = false,
-		$persist_page = false,
-		$persist_order = false
+		bool $persist_filters = false,
+		bool $persist_page = false,
+		bool $persist_order = false
 	) {
 		$request = yii::$app->request;
 		$session = yii::$app->session;
@@ -838,7 +841,7 @@ class RadCrudController extends Controller {
 	/**
 	 * Provides array of data to be send with 'index' action/view
 	 *
-	 * @param $searchModel
+	 * @param ActiveRecord $searchModel
 	 * @param $dataProvider
 	 *
 	 * @return array
@@ -962,6 +965,24 @@ class RadCrudController extends Controller {
 	}
 
 	/**
+	 * Builds the a redirect with a return_url and parameters
+	 *
+	 * @param string $return_url
+	 * @param array $get_params
+	 *
+	 * @return Response
+	 */
+	protected function redirectReturnUrl( string $return_url, array $get_params = [] ) {
+		return $this->redirect( [
+			parse_url( $return_url, PHP_URL_PATH ),
+			array_merge(
+				$get_params,
+				parse_url( $return_url, PHP_URL_QUERY )
+			)
+		] );
+	}
+
+	/**
 	 * Response for crud actions
 	 *
 	 * @param string $view
@@ -1065,7 +1086,7 @@ class RadCrudController extends Controller {
 		return $this->afterCrudSuccess(
 			$this->action->id,
 			$this->model,
-			$this->redirect( [ $return_url, 'id' => $this->model->id ] )
+			$this->redirectReturnUrl( $return_url, [ 'id' => $this->model->id ] )
 		);
 	}
 
@@ -1153,7 +1174,7 @@ class RadCrudController extends Controller {
 		}
 
 		// Non-ajax request
-		return $this->redirect( [ $return_url ] );
+		return $this->redirectReturnUrl( $return_url );
 	}
 
 
@@ -1179,7 +1200,7 @@ class RadCrudController extends Controller {
 	 *
 	 * @return string
 	 */
-	protected function modalToFullpageLink( $action ) {
+	protected function modalToFullpageLink( string $action ) {
 		return $this->viewShowFullpageLink ?
 			Html::a( '<span class="glyphicon glyphicon-fullscreen"></span>',
 				yii\helpers\Url::to(
@@ -1206,10 +1227,11 @@ class RadCrudController extends Controller {
 	 * If the model is not found, a 404 HTTP exception will be thrown.
 	 *
 	 * @param integer $id
+	 * @param bool $throw_not_found
 	 *
 	 * @throws NotFoundHttpException if the model cannot be found
 	 */
-	protected function findModel( $id, $throw_not_found = true ) {
+	protected function findModel( int $id, bool $throw_not_found = true ) {
 		$modelClass = $this->modelClass;
 		$this->model = $modelClass::findOne( $id );
 		if ( ! $this->model && $throw_not_found ) {
