@@ -212,7 +212,7 @@ class RadHierarchyLinkController extends RadCrudController {
 	 *
 	 * @param array $additional_breadcrumbs
 	 */
-	public function addBreadCrumbs( $additional_breadcrumbs = [] ) {
+	public function addBreadCrumbs( array $additional_breadcrumbs = [] ) {
 		// Gather breadcrumbs for all linked models
 		foreach ( $this->getActiveLinkedModels() as $filter_variable => $model ) {
 			if ( ! isset( $this->hierarchy_links[ $filter_variable ]['breadcrumbs'] ) || is_null( $model ) ) {

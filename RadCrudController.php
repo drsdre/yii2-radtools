@@ -639,10 +639,10 @@ class RadCrudController extends Controller {
 	/**
 	 * Add breadcrumbs to the view
 	 *
-	 * @param array $crumbs
+	 * @param array $breadcrumbs
 	 */
-	public function addBreadCrumbs( array $crumbs ) {
-		foreach ( $crumbs as $crumb ) {
+	public function addBreadCrumbs( array $breadcrumbs = [] ) {
+		foreach ( $breadcrumbs as $crumb ) {
 			$this->view->params['breadcrumbs'][] = $crumb;
 		}
 	}
