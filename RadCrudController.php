@@ -1061,7 +1061,7 @@ class RadCrudController extends Controller {
 	 * @param array $render_data
 	 * @param string $modal_footer
 	 * @param string $message
-	 * @param string $default_return_url
+	 * @param string|array $default_return_url
 	 *
 	 * @return array|string|Response
 	 */
@@ -1069,7 +1069,7 @@ class RadCrudController extends Controller {
 		array $render_data,
 		string $modal_footer,
 		string $message,
-		string $default_return_url
+		$default_return_url
 	) {
 		$request = yii::$app->request;
 
@@ -1131,7 +1131,7 @@ class RadCrudController extends Controller {
 	 *
 	 * @param string $title
 	 * @param string $message
-	 * @param string $default_return_url Optional, default 'return_url' get parameter is used
+	 * @param array|string $default_return_url Optional, default 'return_url' get parameter is used
 	 * @param array $errors Optional, record_id => error message array
 	 *
 	 * @return array|string|Response
@@ -1139,7 +1139,7 @@ class RadCrudController extends Controller {
 	protected function bulkActionResponse(
 		string $title,
 		string $message,
-		string $default_return_url = 'index',
+		$default_return_url = [ 'index' ],
 		array $errors = []
 	) {
 		$request = yii::$app->request;
