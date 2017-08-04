@@ -9,6 +9,7 @@
 
 namespace drsdre\radtools;
 
+use drsdre\radtools\helpers\Url;
 use yii;
 use yii\web\Controller;
 use yii\db\ActiveRecord;
@@ -973,13 +974,10 @@ class RadCrudController extends Controller {
 	 * @return Response
 	 */
 	protected function redirectReturnUrl( string $return_url, array $get_params = [] ) {
-		$query_params  = parse_url( $return_url, PHP_URL_QUERY );
+		// Decode the return URL
+		$return_url = urldecode($return_url);
 		return $this->redirect(
-			array_merge(
-				[ parse_url( $return_url, PHP_URL_PATH ) ],
-				$get_params,
-				$query_params ? $query_params : []
-			)
+			Url::urlQueryMerge($return_url, $get_params)
 		);
 	}
 
