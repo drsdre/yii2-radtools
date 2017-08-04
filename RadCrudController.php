@@ -1025,10 +1025,9 @@ class RadCrudController extends Controller {
 	protected function redirectReturnUrl( $return_url, array $base_get_params = [] ) {
 		// Handle
 		if ( is_array( $return_url ) ) {
-			return $this->redirect( [
-				array_shift( $return_url ),
-				ArrayHelper::merge( $base_get_params, $return_url ),
-			] );
+			return $this->redirect(
+				[ array_shift( $return_url ) ] + ArrayHelper::merge( $base_get_params, $return_url )
+			);
 		}
 
 		// Decode the return URL
