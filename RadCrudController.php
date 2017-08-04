@@ -9,7 +9,6 @@
 
 namespace drsdre\radtools;
 
-use drsdre\radtools\helpers\Url;
 use yii;
 use yii\web\Controller;
 use yii\db\ActiveRecord;
@@ -18,6 +17,7 @@ use yii\web\NotFoundHttpException;
 use yii\helpers\Html;
 use yii\web\Response;
 use yii\helpers\ArrayHelper;
+use drsdre\radtools\helpers\Url;
 
 /**
  * Implements Ajax CRUD actions for a model.
@@ -60,23 +60,23 @@ class RadCrudController extends Controller {
 	/** @var bool $useDetailView set to true if Kartik-v yii2-detail-view is used for view/update/create */
 	protected $useDetailView = false;
 
-	/** @var string $updateSuccessRedirect view to redirect to when update was successful */
-	protected $updateSuccessRedirect = 'view';
+	/** @var array|string $updateSuccessRedirect view to redirect to when update was successful */
+	protected $updateSuccessRedirect = [ 'view' ];
 
-	/** @var string $createSuccessRedirect default url to redirect to when create was successful */
-	protected $createSuccessRedirect = 'view';
+	/** @var array|string $createSuccessRedirect default url to redirect to when create was successful */
+	protected $createSuccessRedirect = [ 'view' ];
 
-	/** @var string $copySuccessRedirect default url to redirect to when copy was successful */
-	protected $copySuccessRedirect = 'update';
+	/** @var array|string $copySuccessRedirect default url to redirect to when copy was successful */
+	protected $copySuccessRedirect = [ 'update' ];
 
-	/** @var string $copySuccessRedirect default url to redirect to when copy was successful */
-	protected $deleteSuccessRedirect = 'index';
+	/** @var array|string $copySuccessRedirect default url to redirect to when copy was successful */
+	protected $deleteSuccessRedirect = [ 'index' ];
 
-	/** @var string $bulkDeleteSuccessRedirect default url to redirect to when bulk delete was successful */
-	protected $bulkDeleteSuccessRedirect = 'index';
+	/** @var array|string $bulkDeleteSuccessRedirect default url to redirect to when bulk delete was successful */
+	protected $bulkDeleteSuccessRedirect = [ 'index' ];
 
 	/** @var string $bulkUpdateSuccessRedirect default url to redirect to when bulk update was successful */
-	protected $bulkUpdateSuccessRedirect = 'index';
+	protected $bulkUpdateSuccessRedirect = [ 'index' ];
 
 	/** @var string $viewShowFullpageLink when true, adds a clickable icon in modal view to switch to full page view */
 	protected $viewShowFullpageLink = false;
@@ -873,14 +873,24 @@ class RadCrudController extends Controller {
 	 * @return string html
 	 */
 	protected function viewModalFooter() {
-		return Html::button( yii::t('app', 'Close'), [
+		return Html::button( yii::t( 'app', 'Close' ), [
 				'class'        => 'btn btn-default pull-left',
 				'data-dismiss' => 'modal',
 			] ) .
-		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
-			       'class' => 'btn btn-primary',
-			       'role'  => 'modal-remote',
-		       ] );
+		       ( ! $this->useDetailView ?
+			       Html::a( yii::t( 'app', 'Delete' ), [ 'delete', 'id' => $this->model->id ], [
+				       'class' => 'btn btn-danger',
+				       'role'  => 'modal-remote',
+				       'data'  => [
+					       'confirm' => Yii::t( 'app', 'Are you sure you want to delete this item?' ),
+					       'method'  => 'post',
+				       ],
+			       ] ) .
+			       Html::a( yii::t( 'app', 'Edit' ), [ 'update', 'id' => $this->model->id ], [
+				       'class' => 'btn btn-primary',
+				       'role'  => 'modal-remote',
+			       ] ) :
+			       '' );
 	}
 
 	/**
@@ -959,25 +969,52 @@ class RadCrudController extends Controller {
 				'class'        => 'btn btn-default pull-left',
 				'data-dismiss' => 'modal',
 			] ) .
-		       Html::a( yii::t('app', 'Edit'), [ 'update', 'id' => $this->model->id ], [
-			       'class' => 'btn btn-primary',
-			       'role'  => 'modal-remote',
-		       ] );
+		       ( ! $this->useDetailView ?
+			       Html::a( yii::t( 'app', 'Delete' ), [ 'delete', 'id' => $this->model->id ], [
+				       'class' => 'btn btn-danger',
+				       'role'  => 'modal-remote',
+				       'data'  => [
+					       'confirm' => Yii::t( 'app', 'Are you sure you want to delete this item?' ),
+					       'method'  => 'post',
+				       ],
+			       ] ) .
+			       Html::a( yii::t( 'app', 'Edit' ), [ 'update', 'id' => $this->model->id ], [
+				       'class' => 'btn btn-primary',
+				       'role'  => 'modal-remote',
+			       ] ) :
+			       '' );
 	}
 
 	/**
-	 * Builds the a redirect with a return_url and parameters
+	 * Creates a redirect code with return_url and parameters combined
 	 *
-	 * @param string $return_url
-	 * @param array $get_params
+	 * @param string|array $return_url
+	 * - a string representing a URL (e.g. "http://example.com")
+	 * - a string representing a URL alias (e.g. "@example.com")
+	 * - an array in the format of `[$route, ...name-value pairs...]` (e.g. `['site/index', 'ref' => 1]`)
+	 *   [[Url::to()]] will be used to convert the array into a URL.
+	 *
+	 * Any relative URL that starts with a single forward slash "/" will be converted
+	 * into an absolute one by prepending it with the host info of the current request.
+	 *
+	 * @param array $base_get_params
 	 *
 	 * @return Response
 	 */
-	protected function redirectReturnUrl( string $return_url, array $get_params = [] ) {
+	protected function redirectReturnUrl( $return_url, array $base_get_params = [] ) {
+		// Handle
+		if ( is_array( $return_url ) ) {
+			return $this->redirect( [
+				array_shift( $return_url ),
+				ArrayHelper::merge( $base_get_params, $return_url ),
+			] );
+		}
+
 		// Decode the return URL
-		$return_url = urldecode($return_url);
+		$return_url = urldecode( $return_url );
+
 		return $this->redirect(
-			Url::urlQueryMerge($return_url, $get_params)
+			Url::urlQueryMerge( $return_url,  $base_get_params )
 		);
 	}
 

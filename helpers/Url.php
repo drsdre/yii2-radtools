@@ -17,15 +17,16 @@ class Url extends \yii\helpers\Url {
 	 *
 	 * @param string $url
 	 * @param array $query_params
+	 * @param bool $query_params_base query parameters used as base overwritten by url params
 	 *
 	 * @return string|bool
 	 */
-	public static function urlQueryMerge( string $url, array $query_params ) {
+	public static function urlQueryMerge( string $url, array $query_params, bool $query_params_base = true ) {
 		// $url = 'http://www.google.com.au?q=apple&type=keyword';
 		// $query = '?q=banana';
 
 		// Stop if the url is empty
-		if ( empty($url) ) {
+		if ( empty( $url ) ) {
 			return false;
 		}
 
@@ -43,16 +44,21 @@ class Url extends \yii\helpers\Url {
 		}
 
 		// Turn the url's query string into an array
-		parse_str( $url_components['query'], $original_query_string );
+		parse_str( $url_components['query'], $url_query_params );
 
 		// Find the original query string in the URL and replace it with the new merged
 		return str_replace(
 			$url_components['query'],
 			http_build_query(
-				ArrayHelper::merge(
-					$original_query_string,
-					$query_params
-				)
+				$query_params_base ?
+					ArrayHelper::merge(
+						$query_params,
+						$url_query_params
+					) :
+					ArrayHelper::merge(
+						$url_query_params,
+						$query_params
+					)
 			),
 			$url
 		);
