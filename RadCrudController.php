@@ -973,13 +973,14 @@ class RadCrudController extends Controller {
 	 * @return Response
 	 */
 	protected function redirectReturnUrl( string $return_url, array $get_params = [] ) {
-		return $this->redirect( [
-			parse_url( $return_url, PHP_URL_PATH ),
+		$query_params  = parse_url( $return_url, PHP_URL_QUERY );
+		return $this->redirect(
 			array_merge(
+				[ parse_url( $return_url, PHP_URL_PATH ) ],
 				$get_params,
-				parse_url( $return_url, PHP_URL_QUERY )
+				$query_params ? $query_params : []
 			)
-		] );
+		);
 	}
 
 	/**
