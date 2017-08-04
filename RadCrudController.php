@@ -483,33 +483,52 @@ class RadCrudController extends Controller {
 		// For all given id's (pks)
 		$pks = explode( ',', $request->post( 'pks' ) );
 		foreach ( $pks as $pk ) {
-			try {
-				// Get the model and delete
-				$this->findModel( $pk );
+			// Get the model and delete
+			$this->findModel( $pk, false );
 
-				$delete_result = $this->deleteModel();
-
-				// Check for error message
-				if ( is_string($delete_result) ) {
-					throw new Exception($delete_result);
-
-					// Check for result false
-				} elseif( $delete_result === false ) {
-					throw new Exception( yii::t('app', 'unknown') );
-				} else {
-					$record_count++;
-				}
-			} catch ( yii\base\Exception $e ) {
-				$errors[ $pk ] = Html::errorSummary(
-					$this->model,
-					['header' =>
-						 yii::t('app', 'Delete \'{object}\' error:', [
-						 	'object' => ArrayHelper::getValue( $this->model, $this->model_field_name )
-						 ] )
-					]
-				);
+			// Check if model is found
+			if ( ! $this->model ) {
+				$errors[ $pk ] = yii::t( 'app', 'Record not found' );
+				continue;
 			}
+
+			// Try to delete model
+			$delete_result = $this->deleteModel();
+
+			// Check if model is deleted
+			if ( $this->model ) {
+				// Check for validation errors
+				if ( $this->model->getErrors() ) {
+					$errors[ $pk ] = Html::errorSummary(
+						$this->model,
+						[
+							'header' =>
+								yii::t( 'app', 'Delete \'{object}\' error:', [
+									'object' => ArrayHelper::getValue( $this->model, $this->model_field_name )
+								] )
+						]
+					);
+					continue;
+				}
+
+					// Check for delete_result message
+				elseif ( is_string( $delete_result ) ) {
+					$errors[ $pk ] = yii::t( 'app', 'Cannot delete {model_object_name}: {result}', [
+						'model_object_name' => $this->getModelObjectName(),
+						'result' => $delete_result,
+					] );
+
+					// General error
+				} else {
+					$errors[ $pk ] = yii::t( 'app', 'Cannot delete {model_object_name}: reason unknown', [
+						'model_object_name' => $this->getModelObjectName(),
+					] );
+				}
+			}
+
+			$record_count ++;
 		}
+
 
 		return $this->bulkActionResponse(
 			yii::t( 'app', 'Bulk Delete' ),
@@ -557,36 +576,38 @@ class RadCrudController extends Controller {
 			foreach ( $pks as $id ) {
 				$this->findModel( (int) $id, false );
 
-				if ( $this->model ) {
-					// Set a model scenario if specified
-					if ( isset( $this->model_update_scenario ) ) {
-						$this->model->setScenario( $this->model_update_scenario );
-					}
+				// Check if model is found
+				if ( ! $this->model ) {
+					$errors[ $id ] = yii::t( 'app', 'Record {id} not found', [ 'id' => $id ] );
+					continue;
+				}
 
-					// Update the variables
-					$this->model->attributes = $update_attribute_value;
+				// Set a model scenario if specified
+				if ( isset( $this->model_update_scenario ) ) {
+					$this->model->setScenario( $this->model_update_scenario );
+				}
 
-					// Check if record is changed
-					if ( $this->model->getDirtyAttributes() ) {
-						// Save data
-						if ( ! $this->model->save() ) {
-							// Track errors
-							$errors[ $id ] = Html::errorSummary(
-								$this->model,
-								['header' =>
-									 yii::t('app', 'Update \'{object}\' error:', [
-										 'object' => ArrayHelper::getValue( $this->model, $this->model_field_name )
-									 ] )
-								]
-							);
-						} else {
-							// Track updates
-							$records_updated ++;
-						}
+				// Update the variables
+				$this->model->attributes = $update_attribute_value;
+
+				// Check if record is changed
+				if ( $this->model->getDirtyAttributes() ) {
+					// Save data
+					if ( ! $this->model->save() ) {
+						// Track errors
+						$errors[ $id ] = Html::errorSummary(
+							$this->model,
+							[
+								'header' =>
+									yii::t( 'app', 'Update \'{object}\' error:', [
+										'object' => ArrayHelper::getValue( $this->model, $this->model_field_name )
+									] )
+							]
+						);
+					} else {
+						// Track updates
+						$records_updated ++;
 					}
-				} else {
-					// Track if record is not found
-					$errors[ $id ] = 'id ' . $id . ' not found!';
 				}
 			}
 		}
