@@ -308,8 +308,15 @@ class RadHierarchyLinkController extends RadCrudController {
 			// Add hierarchy link as where clause to the query
 			$modelObject = new $model;
 			if ( $modelObject->isAttributeActive( $field ) ) {
+				// Determine field name to set filter on
+				if ( array_key_exists('fieldname', $hierarchy_link ) ) {
+					$fieldname =  $hierarchy_link['fieldname'];
+				} else {
+					$fieldname = $model::tableName() . '.' . $field;
+				}
+
 				$dataProvider->query->andWhere(
-					[ $model::tableName() . '.' . $field => $this->active_hierarchy_filters[ $field ] ]
+					[ $fieldname => $this->active_hierarchy_filters[ $field ] ]
 				);
 			}
 
