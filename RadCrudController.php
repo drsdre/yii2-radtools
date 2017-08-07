@@ -12,7 +12,6 @@ namespace drsdre\radtools;
 use yii;
 use yii\web\Controller;
 use yii\db\ActiveRecord;
-use yii\base\Exception;
 use yii\web\NotFoundHttpException;
 use yii\helpers\Html;
 use yii\web\Response;
@@ -556,6 +555,11 @@ class RadCrudController extends Controller {
 		// Parse the fields to update
 		$update_attribute_value = [];
 		$model                  = new $this->modelClass;
+
+		if ( isset( $this->model_update_scenario ) ) {
+			$model->setScenario( $this->model_update_scenario );
+		}
+
 		/** @var ActiveRecord $model */
 		foreach ( $model->activeAttributes() as $attribute ) {
 			// Check if a value is provided
@@ -567,7 +571,7 @@ class RadCrudController extends Controller {
 		$errors = [];
 		$records_updated = 0;
 
-		// CHeck if there are fields to update
+		// Check if there are fields to update
 		if ( ! $update_attribute_value ) {
 			$errors[] = yii::t( 'app', 'No fields found to update.' );
 		} else {
@@ -588,7 +592,7 @@ class RadCrudController extends Controller {
 				}
 
 				// Update the variables
-				$this->model->attributes = $update_attribute_value;
+				$this->model->setAttributes( $update_attribute_value );
 
 				// Check if record is changed
 				if ( $this->model->getDirtyAttributes() ) {
