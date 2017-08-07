@@ -173,8 +173,9 @@ class RadCrudController extends Controller {
 	public function actionCreate() {
 		$request = yii::$app->request;
 
-		// Setup a new record
+		// Setup a new record with default values
 		$this->model = $this->newModel();
+		$this->model->loadDefaultValues();
 
 		// Setup page title and first breadcrumb
 		$this->view->title = yii::t( 'app', 'Create new {model_name}', [
