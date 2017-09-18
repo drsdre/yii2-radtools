@@ -66,7 +66,7 @@ class RadCrudController extends Controller {
 	protected $createSuccessRedirect = [ 'view' ];
 
 	/** @var array|string $copySuccessRedirect default url to redirect to when copy was successful */
-	protected $copySuccessRedirect = [ 'update' ];
+	protected $copySuccessRedirect = [ 'view' ];
 
 	/** @var array|string $copySuccessRedirect default url to redirect to when copy was successful */
 	protected $deleteSuccessRedirect = [ 'index' ];
@@ -1122,7 +1122,7 @@ class RadCrudController extends Controller {
 					'title'       => $this->view->title,
 					'content'     => '<div class="text-success">' . $message . '</div>' .
 					                 $this->renderAjax(
-						                 $return_url,
+						                 $return_view,
 						                 $render_data
 					                 ),
 					'footer'      => $modal_footer,
