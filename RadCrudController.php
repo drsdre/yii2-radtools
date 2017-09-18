@@ -419,7 +419,9 @@ class RadCrudController extends Controller {
 					] ),
 				];
 			} else {
-				if ( $return_url == 'index' ) {
+				$return_view = is_array( $return_url ) ? $return_url[0] : $return_url;
+
+				if ( $return_view == 'index' ) {
 					// Back to grid: reload grid and close modal
 					$ajax_response = [
 						'forceReload' => $this->getGridviewPjaxId(),
@@ -428,7 +430,7 @@ class RadCrudController extends Controller {
 				} else {
 					// A different return URL: redirect to this URL
 					$ajax_response = [
-						'forceRedirect' => $return_url,
+						'forceRedirect' => Url::to( $return_url ),
 					];
 				}
 
@@ -1099,24 +1101,26 @@ class RadCrudController extends Controller {
 		$request = yii::$app->request;
 
 		// Determine return_url
-		$return_url = $request->get('return_url', $default_return_url);
+		$return_url = $request->get( 'return_url', $default_return_url );
 
 		// Ajax Crud modal request
 		if ( $request->isAjax && ! $request->isPjax ) {
 			// Ajax request
 			yii::$app->response->format = Response::FORMAT_JSON;
 
-			if ( $return_url == 'index') {
+			$return_view = is_array( $return_url ) ? $return_url[0] : $return_url;
+
+			if ( $return_view == 'index' ) {
 				$result = [
 					'forceReload' => $this->getGridviewPjaxId(),
 					'forceClose'  => true,
 				];
-			} elseif ( in_array( $return_url, ['view', 'update'] ) ) {
+			} elseif ( in_array( $return_view, [ 'view', 'update' ] ) ) {
 				// Success
 				$result = [
 					'forceReload' => $this->getGridviewPjaxId(),
 					'title'       => $this->view->title,
-					'content'     => '<div class="text-success">' . $message . '</div>'.
+					'content'     => '<div class="text-success">' . $message . '</div>' .
 					                 $this->renderAjax(
 						                 $return_url,
 						                 $render_data
@@ -1125,7 +1129,7 @@ class RadCrudController extends Controller {
 				];
 			} else {
 				$result = [
-					'forceRedirect' => $return_url,
+					'forceRedirect' => Url::to( $return_url ),
 				];
 			}
 
@@ -1184,7 +1188,9 @@ class RadCrudController extends Controller {
 			// Ajax request
 			$response->format = Response::FORMAT_JSON;
 
-			if ( $return_url == 'index' ) {
+			$return_view = is_array( $return_url ) ? $return_url[0] : $return_url;
+
+			if ( $return_view == 'index' ) {
 				// Back to grid: reload grid and close modal
 				return [
 					'forceReload' => $this->getGridviewPjaxId(),
@@ -1214,7 +1220,7 @@ class RadCrudController extends Controller {
 
 				// A different return URL: redirect to this URL
 				return [
-					'forceRedirect' => $return_url,
+					'forceRedirect' => Url::to( $return_url ),
 				];
 			}
 		}
