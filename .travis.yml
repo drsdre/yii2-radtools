@@ -1,31 +1,23 @@
 language: php
-
 php:
-  - 7.0
-  - 5.6
-  - 5.5
-  - 5.4
-
-# environment variable used in test suite
-env: TEST_ENVIRONMENT=travis
-
-# faster builds on new travis setup not using sudo
+- 7.2
+- 7.1
+- 7.0
+env:
+  global:
+    secure: pqzaZedxGolCYQwuLpJhguC22x6uhUVJnJfAUkL/vd/a4sP8hHtD08RYAsdxmuMAOuhTWYAzrfIetjvMMbL+WTp5jDA8bJHDlhcOozGDV6fz4MjBD1FhBUZO6/XBhPw7SnvtuIZYMTGmZq5QI30nFK/nA6YX9MeloQtb9SD/JXoWP+OPXyFRP+047mDHVMuMeHdeMLhH9QjDhhikfsd4HSrU6hEtWVkxvA0faVez6ZIHb3Amsxeyt7BS8kgvNCMKnHcJjAHrwAPs4J/QAwLBoCIzXgJ+7WKNJnKmNEb/ED+Cp0sqZkiZbrns0MYwr2oG3w18uT8RpS5DnBDSeF1+K3LjGRQ09yY2N293bqytlHBekmxoIQyOyWIEGxhOs3Yk/xDxZscRnTen9tyRCHF7OdXmaeplE6IRNP4RzKbtyH5DZDTehE0pgZgIZKyor/GdK4hvw7kJT58vjBSZ0ce1Zsa1bo527sYZ4ZKpxYYzsP6RRURLCjsnZ82SZGDIIJtLu+YfQnZGD3FmEPCIcLMwPnL/2j6ta2fvu/Gb6Exz12S8INNJDEJaIhCksMMQm6Wcq2BkJwQ+O/8+bSY6RLE0ZB9SZoubqkv1vhezUpPvAUmAerV2/cVUaYqFdhoKJUMrS3w+WfGWcI7aDzTgqVXpqHc2sviNfSwIy0iPjpYti6I=
 sudo: false
-
-# cache vendor dirs
 cache:
   directories:
-    - vendor
-    - $HOME/.composer/cache
-
-# install dependencies
+  - vendor
+  - $HOME/.composer/cache
+before_install:
+- composer config --global github-oauth.github.com "$GITHUB_TOKEN"
 install:
-  - travis_retry composer self-update
-  - travis_retry composer global require "codeception/codeception:2.3.6"
-  - travis_retry composer global require "fxp/composer-asset-plugin:~1.1.0"
-  - travis_retry composer install --prefer-dist
-
+- travis_retry composer self-update
+- travis_retry composer global require "codeception/codeception:2.3.6"
+- travis_retry composer global require "fxp/composer-asset-plugin:~1.1.0"
+- travis_retry composer install --dev --prefer-dist
 before_script:
-  - ~/.composer/vendor/bin/codecept build
-
+- ~/.composer/vendor/bin/codecept build
 script: ~/.composer/vendor/bin/codecept run
