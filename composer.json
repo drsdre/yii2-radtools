@@ -18,9 +18,14 @@
     ],
     "require": {
         "php": ">=7.0.0",
-        "yiisoft/yii2": "*",
+        "yiisoft/yii2": "~2.0",
         "johnitvn/yii2-ajaxcrud": "dev-master",
         "kartik-v/yii2-dynagrid": "~1.4"
+    },
+    "require-dev": {
+        "codeception/codeception": "^2.2",
+        "codeception/specify": "~0.4",
+        "codeception/verify": "~0.3"
     },
     "autoload": {
         "psr-4": {

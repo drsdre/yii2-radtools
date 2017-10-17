@@ -8,59 +8,60 @@
 
 namespace drsdre\radtools\helpers;
 
-use common\helpers\ArrayHelper;
+use yii\helpers\ArrayHelper;
 
 class Url extends \yii\helpers\Url {
 
 	/**
 	 * Merges query parameters into an existing URL overwriting existing query keys
 	 *
-	 * @param string $url
-	 * @param array $query_params
-	 * @param bool $query_params_base query parameters used as base overwritten by url params
+	 * @param string $base_url
+	 * @param array $new_query_params
+	 * @param bool $new_overrules query parameters used as base overwritten by url params
 	 *
 	 * @return string|bool
 	 */
-	public static function urlQueryMerge( string $url, array $query_params, bool $query_params_base = true ) {
+	public static function urlQueryMerge( string $base_url, array $new_query_params, bool $new_overrules = true ) {
 		// $url = 'http://www.google.com.au?q=apple&type=keyword';
 		// $query = '?q=banana';
 
 		// Stop if the url is empty
-		if ( empty( $url ) ) {
+		if ( empty( $base_url ) ) {
 			return false;
 		}
 
 		// If empty query, return url as is
-		if ( ! $query_params ) {
-			return $url;
+		if ( ! $new_query_params ) {
+			return $base_url;
 		}
-		// split the url into it's components
-		$url_components = parse_url( $url );
+
+		$base_url_components = parse_url( $base_url );
 
 		// if we have the query string but no query on the original url
 		// just return the URL + query string
-		if ( empty( $url_components['query'] ) ) {
-			return $url . '?' . http_build_query( $query_params );
+		if ( empty( $base_url_components['query'] ) ) {
+			return $base_url . '?' . http_build_query( $new_query_params );
 		}
 
-		// Turn the url's query string into an array
-		parse_str( $url_components['query'], $url_query_params );
+		// Parse query string into array
+		parse_str( $base_url_components['query'], $base_query_params );
 
 		// Find the original query string in the URL and replace it with the new merged
 		return str_replace(
-			$url_components['query'],
+			$base_url_components['query'],
 			http_build_query(
-				$query_params_base ?
-					ArrayHelper::merge(
-						$query_params,
-						$url_query_params
-					) :
-					ArrayHelper::merge(
-						$url_query_params,
-						$query_params
-					)
+				// merge order
+				$new_overrules ?
+				ArrayHelper::merge(
+					$base_query_params,
+					$new_query_params
+				) :
+				ArrayHelper::merge(
+					$new_query_params,
+					$base_query_params
+				)
 			),
-			$url
+			$base_url
 		);
 	}
 }
