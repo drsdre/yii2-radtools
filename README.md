@@ -1,5 +1,8 @@
 Yii2 RAD Tools
 ==============
+
+[![Build Status](https://travis-ci.org/drsdre/yii2-radtools.svg?branch=master)](https://travis-ci.org/drsdre/yii2-radtools)
+
 Rapid Application Development controller for quick and complete crud interfaces
 to linked database models. 
 It supports [yii2-ajaxcrud](https://github.com/johnitvn/yii2-ajaxcrud) for modal based crud forms (pop-ups),
