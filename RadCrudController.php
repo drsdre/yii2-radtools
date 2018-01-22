@@ -121,9 +121,7 @@ class RadCrudController extends Controller {
 		$this->findModel( $id );
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'app', 'View {model_object_name}',
-			[ 'model_object_name' => $this->getModelObjectName() ]
-		);
+		$this->view->title = $this->getModelObjectName();
 		$this->addBreadCrumbs( [
 			[ 'label' => $this->model_name . ' Overview', 'url' => [ 'index' ] ],
 			ArrayHelper::getValue( $this->model, $this->model_field_name ),
@@ -700,7 +698,7 @@ class RadCrudController extends Controller {
 	public function deleteModel() {
 		try {
 			return $this->model->delete();
-		} catch ( \Exception $e ) {
+		} catch ( Exception $e ) {
 			// Build error message
 			if ( $e->getCode() === 23000 && preg_match( '/CONSTRAINT `(.*)` FOREIGN/', $e->getMessage(),
 					$matches ) === 1
