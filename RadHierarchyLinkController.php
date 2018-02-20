@@ -62,6 +62,8 @@ class RadHierarchyLinkController extends RadCrudController {
 
 	/**
 	 * Parses link parameters from URL and stored them in session for hierarchy links
+	 *
+	 * @throws yii\base\InvalidConfigException
 	 */
 	protected function parseLinksFromUrl() {
 		// If no hierarchy filter specified in controller, skip the parsing
@@ -78,7 +80,7 @@ class RadHierarchyLinkController extends RadCrudController {
 		// Do filters need to be reset?
 		if ( $request->getQueryParam( $this->grid_hierarchy_reset_get_param ) ) {
 
-			Yii::trace( 'Persistent hierarchy filters reset on request', __METHOD__ );
+			Yii::debug( 'Persistent hierarchy filters reset on request', __METHOD__ );
 			foreach ( $this->hierarchy_links as $incoming_filter_field => $incoming_filter_value ) {
 				// Reset the defined filters for this controller
 				unset( $this->active_hierarchy_filters[ $incoming_filter_field ] );
@@ -86,6 +88,7 @@ class RadHierarchyLinkController extends RadCrudController {
 		}
 
 		// Get the search filters
+		/** @var ActiveRecord $SearchModel */
 		$SearchModel = new $this->searchModelClass;
 		$search_filters = $request->getQueryParam($SearchModel->formName());
 
@@ -101,7 +104,7 @@ class RadHierarchyLinkController extends RadCrudController {
 					foreach ( $this->hierarchy_links[ $incoming_filter_field ]['reset_hierarchy_fields'] as $reset_field ) {
 						unset( $this->active_hierarchy_filters[ $reset_field ] );
 
-						Yii::trace( 'Persistent hierarchy filters reset triggered by ' . $reset_field, __METHOD__ );
+						Yii::debug( 'Persistent hierarchy filters reset triggered by ' . $reset_field, __METHOD__ );
 					}
 				}
 
@@ -110,12 +113,12 @@ class RadHierarchyLinkController extends RadCrudController {
 					// Add new filter
 					$this->active_hierarchy_filters[ $incoming_filter_field ] = $incoming_filter_value;
 
-					Yii::trace( 'Persistent hierarchy filter for ' . $incoming_filter_field . ' set', __METHOD__ );
+					Yii::debug( 'Persistent hierarchy filter for ' . $incoming_filter_field . ' set', __METHOD__ );
 				} else {
 					// Unset filter if no value given
 					unset( $this->active_hierarchy_filters[ $incoming_filter_field ] );
 
-					Yii::trace( 'Persistent hierarchy filter for ' . $incoming_filter_field . ' unset', __METHOD__ );
+					Yii::debug( 'Persistent hierarchy filter for ' . $incoming_filter_field . ' unset', __METHOD__ );
 				}
 
 				// If the hierarchy filter is overwritten by different manual search
@@ -126,7 +129,7 @@ class RadHierarchyLinkController extends RadCrudController {
 					// Drop the hierarchy link
 					unset( $this->active_hierarchy_filters[ $incoming_filter_field ] );
 
-					Yii::trace( 'Persistent hierarchy filter manual overwritten for ' . $incoming_filter_field, __METHOD__ );
+					Yii::debug( 'Persistent hierarchy filter manual overwritten for ' . $incoming_filter_field, __METHOD__ );
 				}
 			}
 		};
@@ -134,7 +137,7 @@ class RadHierarchyLinkController extends RadCrudController {
 		// Store the filters
 		$session->set( $this->hierarchy_link_session_key, $this->active_hierarchy_filters );
 
-		Yii::trace( $session->get( $this->hierarchy_link_session_key ), __METHOD__ );
+		Yii::debug( $session->get( $this->hierarchy_link_session_key ), __METHOD__ );
 
 		// Make linked models available in the view
 		$this->view->params['hierarchy_records'] = $this->getActiveLinkedModels();
@@ -194,6 +197,8 @@ class RadHierarchyLinkController extends RadCrudController {
 
 			return isset( $this->active_hierarchy_records[ $link_id ] ) ? $this->active_hierarchy_records[ $link_id ] : null;
 		}
+
+		return null;
 	}
 
 	/**
@@ -306,6 +311,7 @@ class RadHierarchyLinkController extends RadCrudController {
 			}
 
 			// Add hierarchy link as where clause to the query
+			/** @var ActiveRecord $modelObject */
 			$modelObject = new $model;
 			if ( $modelObject->isAttributeActive( $field ) ) {
 				// Determine field name to set filter on
