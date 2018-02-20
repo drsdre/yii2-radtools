@@ -40,7 +40,7 @@ class RadCrudController extends Controller {
 	protected $model_field_name;
 
 	/** @var string $model_id_field ActiveRecord field name containing id of record */
-	protected $model_id_field;
+	protected $model_id_field = 'id';
 
 	/** @var string $grid_persistent_reset_param name of query parameter for resetting persistent cache */
 	static $grid_persistent_reset_param = 'reset_grid_persistence';
@@ -1369,9 +1369,6 @@ class RadCrudController extends Controller {
 	 */
 	protected function newModel() {
 		$this->model = new $this->modelClass();
-		if ( ! $this->model_id_field ) {
-			$this->model_id_field = $this->model->primaryKey;
-		}
 		return $this->model;
 	}
 
@@ -1389,10 +1386,6 @@ class RadCrudController extends Controller {
 		$this->model = $modelClass::findOne( $id );
 		if ( ! $this->model && $throw_not_found ) {
 			throw new NotFoundHttpException( 'The requested page does not exist.' );
-		}
-
-		if ( ! $this->model_id_field ) {
-			$this->model_id_field = $this->model->primaryKey;
 		}
 	}
 }
