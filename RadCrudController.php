@@ -223,7 +223,7 @@ class RadCrudController extends Controller {
 		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 			// Success
 			return $this->crudActionSuccessResponse(
-				$this->updateRenderData(),
+				$this->createRenderData(),
 				$this->createModalFooterSaved(),
 				yii::t( 'radtools', '{model_name} {model_object_name} created', [
 					'model_name'        => $this->model_name,
