@@ -88,12 +88,15 @@ class RadCrudController extends Controller {
 	protected $model;
 
 	/**
-	 * @event AfterCrudEvent an event that is triggered after a crud action is completed.
+	 * @event BeforeCrudValidation an event that is triggered before a crud action is validated.
+	 */
+	const EVENT_BEFORE_CRUD_VALIDATION = 'beforeCrudValidation';
+
+	/**
+	 * @event RadCrudEvent an event that is triggered after a crud action is completed.
 	 */
 	const EVENT_AFTER_CRUD_SUCCESS = 'afterCrudSuccess';
 
-	// Actions
-	// ----------------------------------
 
 	public function init()
 	{
@@ -114,6 +117,9 @@ class RadCrudController extends Controller {
 		];
 	}
 
+	// Actions
+	// ----------------------------------
+
 	/**
 	 * Lists all records (for gridview)
 	 *
@@ -131,6 +137,11 @@ class RadCrudController extends Controller {
 		// Setup data feed
 		$searchModel  = new $this->searchModelClass();
 		$dataProvider = $this->indexDataProvider( $searchModel );
+
+		$this->beforeCrudValidation(
+			$this->action->id,
+			$this->model
+		);
 
 		return $this->render( 'index', $this->indexRenderData( $searchModel, $dataProvider ) );
 	}
@@ -155,6 +166,11 @@ class RadCrudController extends Controller {
 			[ 'label' => $this->model_name . ' Overview', 'url' => [ 'index' ] ],
 			ArrayHelper::getValue( $this->model, $this->model_field_name ),
 		] );
+
+		$this->beforeCrudValidation(
+			$this->action->id,
+			$this->model
+		);
 
 		// Updates from DetailView
 		if ( $this->useDetailView ) {
@@ -219,6 +235,11 @@ class RadCrudController extends Controller {
 			$this->model->setScenario( $this->model_create_scenario );
 		}
 
+		$this->beforeCrudValidation(
+			$this->action->id,
+			$this->model
+		);
+
 		// Load, validate and save model data
 		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 			// Success
@@ -240,6 +261,9 @@ class RadCrudController extends Controller {
 			$this->view->title,
 			$this->createModalFooterEdit()
 		);
+	}
+
+	protected function createPreSaving() {
 	}
 
 	/**
@@ -273,6 +297,11 @@ class RadCrudController extends Controller {
 		if ( isset( $this->model_create_scenario ) ) {
 			$this->model->setScenario( $this->model_create_scenario );
 		}
+
+		$this->beforeCrudValidation(
+			$this->action->id,
+			$this->model
+		);
 
 		// Load, validate and save model data
 		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
@@ -331,6 +360,11 @@ class RadCrudController extends Controller {
 			$this->model->setScenario( $this->model_update_scenario );
 		}
 
+		$this->beforeCrudValidation(
+			$this->action->id,
+			$this->model
+		);
+
 		// Load, validate and save model data
 		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
 			// Success
@@ -380,6 +414,11 @@ class RadCrudController extends Controller {
 		// Determine if request is from modal
 		$modal_request = $request->isAjax && ! $request->isPjax;
 		$ajax_response = null;
+
+		$this->beforeCrudValidation(
+			$this->action->id,
+			$this->model
+		);
 
 		// Delete the record
 		$delete_result = $this->deleteModel();
@@ -672,6 +711,31 @@ class RadCrudController extends Controller {
 	// Public non-action functions
 	// --------------------------------------------------
 
+
+	/**
+	 * This method is invoked right before a crud action is validated.
+	 *
+	 * The method will trigger the [[EVENT_BEFORE_CRUD_VALIDATION]] event.
+	 *
+	 * If you override this method, your code should look like the following:
+	 *
+	 * ```php
+	 * public function beforeCrudValidation($action, $model)
+	 * {
+	 *     parent::beforeCrudValidation($action, $model);
+	 * }
+	 * ```
+	 *
+	 * @param string $action the action just executed.
+	 * @param ActiveRecord $model the model of the crud action.
+	 */
+	public function beforeCrudValidation( string $action, ActiveRecord $model = null ) {
+		// Create the EVENT_BEFORE_CRUD_VALIDATION event
+		$event = new RadCrudEvent($action);
+		$event->model = $model;
+		$this->trigger(self::EVENT_BEFORE_CRUD_VALIDATION, $event);
+	}
+
 	/**
 	 * This method is invoked right after a crud action is completed.
 	 *
@@ -696,7 +760,7 @@ class RadCrudController extends Controller {
 	 */
 	public function afterCrudSuccess( string $action, ActiveRecord $model = null, $result ) {
 		// Create the EVENT_AFTER_CRUD_SUCCESS event
-		$event = new AfterCrudEvent($action);
+		$event = new RadCrudEvent($action);
 		$event->model = $model;
 		$event->result = $result;
 		$this->trigger(self::EVENT_AFTER_CRUD_SUCCESS, $event);

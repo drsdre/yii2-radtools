@@ -10,31 +10,31 @@ namespace drsdre\radtools;
 use yii\base\Event;
 
 /**
- * afterCrudEvent represents the event parameter used for a crud action event.
+ * RadCrudEvent represents the event parameter used for a crud action event.
  *
  * @author Andre Schuurman
  * @since 2.0
  */
-class AfterCrudEvent extends Event
+class RadCrudEvent extends Event
 {
 	/**
-	 * @var Action the action currently being executed
+	 * @var string $action Action the action currently being executed
 	 */
 	public $action;
 
 	/**
-	 * @var  yii\db\ActiveRecord the resulting crud model.
+	 * @var  yii\db\ActiveRecord $model the resulting crud model.
 	 */
 	public $model;
 
 	/**
-	 * @var mixed result paramters for action.
+	 * @var mixed $result result parameters for action.
 	 */
 	public $result;
 
 	/**
 	 * Constructor.
-	 * @param Action $action the action associated with this action event.
+	 * @param string $action the action associated with this action event.
 	 * @param array $config name-value pairs that will be used to initialize the object properties
 	 */
 	public function __construct(string $action, $config = [])
