@@ -156,7 +156,6 @@ class RadCrudController extends Controller {
 	 * @throws yii\base\InvalidConfigException
 	 */
 	public function actionView( int $id ) {
-		$request = yii::$app->request;
 
 		$this->findModel( $id );
 
@@ -180,22 +179,24 @@ class RadCrudController extends Controller {
 				$this->model->setScenario( $this->model_update_scenario );
 			}
 
-			// Load the data
-			if ( $this->model->load( $request->post() ) ) {
-				// Save the data
-				$session = yii::$app->session;
-				if ( $this->model->save() ) {
-					// Save success
-					$session->setFlash( 'kv-detail-success', yii::t( 'radtools', 'Saved successfully' ) );
-					return $this->afterCrudSuccess(
-						$this->action->id,
-						$this->model,
-						$this->redirect( [ 'view', 'id' => $this->model->{$this->model_id_field} ] )
-					);
-				} else {
-					// Flash validation error(s)
-					$session->setFlash( 'kv-detail-error', yii::t( 'radtools', 'Error(s) saving' ) );
-				}
+			// Save the data
+			if ( $this->saveFormModel() ) {
+				// Save success
+				yii::$app->session->setFlash(
+					'kv-detail-success',
+					yii::t( 'radtools', 'Saved successfully' )
+				);
+				return $this->afterCrudSuccess(
+					$this->action->id,
+					$this->model,
+					$this->redirect( [ 'view', 'id' => $this->model->{$this->model_id_field} ] )
+				);
+			} else {
+				// Flash validation error(s)
+				yii::$app->session->setFlash(
+					'kv-detail-error',
+					yii::t( 'radtools', 'Error(s) saving' )
+				);
 			}
 		}
 
@@ -215,14 +216,12 @@ class RadCrudController extends Controller {
 	 * @throws yii\base\InvalidConfigException
 	 */
 	public function actionCreate() {
-		$request = yii::$app->request;
-
 		// Setup a new record with default values
 		$this->model = $this->newModel();
 		$this->model->loadDefaultValues();
 
 		// Setup page title and first breadcrumb
-		$this->view->title = yii::t( 'radtools', 'Create new {model_name}', [
+		$this->view->title = yii::t( 'radtools', 'Create New {model_name}', [
 			'model_name' => $this->model_name,
 		] );
 		$this->addBreadCrumbs( [
@@ -241,7 +240,7 @@ class RadCrudController extends Controller {
 		);
 
 		// Load, validate and save model data
-		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
+		if ( ! yii::$app->request->isGet && $this->saveFormModel() ) {
 			// Success
 			return $this->crudActionSuccessResponse(
 				$this->createRenderData(),
@@ -263,9 +262,6 @@ class RadCrudController extends Controller {
 		);
 	}
 
-	protected function createPreSaving() {
-	}
-
 	/**
 	 * Copy from a new model.
 	 *
@@ -276,8 +272,6 @@ class RadCrudController extends Controller {
 	 * @throws yii\base\InvalidConfigException
 	 */
 	public function actionCopy( int $id ) {
-		$request = yii::$app->request;
-
 		$this->findModel( $id );
 
 		// Mark record as new
@@ -288,6 +282,7 @@ class RadCrudController extends Controller {
 		$this->view->title = yii::t( 'radtools', 'Copy {model_object_name}',
 			[ 'model_object_name' => $this->getModelObjectName() ]
 		);
+
 		$this->addBreadCrumbs( [
 			[ 'label' => $this->model_name . ' Overview', 'url' => [ 'index' ] ],
 			yii::t( 'radtools', 'Copy' ),
@@ -304,7 +299,7 @@ class RadCrudController extends Controller {
 		);
 
 		// Load, validate and save model data
-		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
+		if ( ! yii::$app->request->isGet && $this->saveFormModel() ) {
 			// Success
 			return $this->crudActionSuccessResponse(
 				$this->updateRenderData(),
@@ -338,8 +333,6 @@ class RadCrudController extends Controller {
 	 * @throws yii\base\InvalidConfigException
 	 */
 	public function actionUpdate( int $id ) {
-		$request = yii::$app->request;
-
 		$this->findModel( $id );
 
 		// Setup generic view settings
@@ -366,7 +359,7 @@ class RadCrudController extends Controller {
 		);
 
 		// Load, validate and save model data
-		if ( ! $request->isGet && $this->model->load( $request->post() ) && $this->model->save() ) {
+		if ( ! yii::$app->request->isGet && $this->saveFormModel() ) {
 			// Success
 			return $this->crudActionSuccessResponse(
 				$this->updateRenderData(),
@@ -399,20 +392,18 @@ class RadCrudController extends Controller {
 	 * @throws yii\base\InvalidConfigException
 	 */
 	public function actionDelete( int $id = null ) {
-		$request = yii::$app->request;
-
 		// If detail view, try to get id from custom_param
 		if ($this->useDetailView ) {
-			$id = $request->post('id', $id);
+			$id = yii::$app->request->post('id', $id);
 		}
 
 		$this->findModel( $id );
 
 		// Setup URL to return after success
-		$return_url = $request->get( 'return_url', $this->deleteSuccessRedirect );
+		$return_url = yii::$app->request->get( 'return_url', $this->deleteSuccessRedirect );
 
 		// Determine if request is from modal
-		$modal_request = $request->isAjax && ! $request->isPjax;
+		$modal_request = yii::$app->request->isAjax && ! yii::$app->request->isPjax;
 		$ajax_response = null;
 
 		$this->beforeCrudValidation(
@@ -554,13 +545,11 @@ class RadCrudController extends Controller {
 	 * @throws \Exception
 	 */
 	public function actionBulkDelete() {
-		$request = yii::$app->request;
-
 		$errors = [];
 		$record_count = 0;
 
 		// For all given id's (pks)
-		$pks = explode( ',', $request->post( 'pks' ) );
+		$pks = explode( ',', yii::$app->request->post( 'pks' ) );
 		foreach ( $pks as $pk ) {
 			// Get the model and delete
 			$this->findModel( $pk, false );
@@ -582,26 +571,33 @@ class RadCrudController extends Controller {
 						$this->model,
 						[
 							'header' =>
-								yii::t( 'radtools', 'Delete \'{object}\' error:', [
-									'object' => ArrayHelper::getValue( $this->model, $this->model_field_name )
-								] )
+								yii::t(
+									'radtools',
+									'Delete \'{object}\' error:',
+									[
+										'object' => ArrayHelper::getValue( $this->model, $this->model_field_name ),
+									] )
 						]
 					);
 					continue;
-				}
-
-					// Check for delete_result message
+				} // Check for delete_result message
 				elseif ( is_string( $delete_result ) ) {
-					$errors[ $pk ] = yii::t( 'radtools', 'Cannot delete {model_object_name}: {result}', [
-						'model_object_name' => $this->getModelObjectName(),
-						'result' => $delete_result,
-					] );
+					$errors[ $pk ] = yii::t(
+						'radtools',
+						'Cannot delete {model_object_name}: {result}',
+						[
+							'model_object_name' => $this->getModelObjectName(),
+							'result'            => $delete_result,
+						] );
 
 					// General error
 				} else {
-					$errors[ $pk ] = yii::t( 'radtools', 'Cannot delete {model_object_name}: reason unknown', [
-						'model_object_name' => $this->getModelObjectName(),
-					] );
+					$errors[ $pk ] = yii::t(
+						'radtools',
+						'Cannot delete {model_object_name}: reason unknown',
+						[
+							'model_object_name' => $this->getModelObjectName(),
+						] );
 				}
 			}
 
@@ -630,8 +626,6 @@ class RadCrudController extends Controller {
 	 * @throws yii\base\InvalidConfigException
 	 */
 	public function actionBulkUpdate() {
-		$request = yii::$app->request;
-
 		// Parse the fields to update
 		$update_attribute_value = [];
 
@@ -645,8 +639,8 @@ class RadCrudController extends Controller {
 		/** @var ActiveRecord $model */
 		foreach ( $model->activeAttributes() as $attribute ) {
 			// Check if a value is provided
-			if ( ! is_null( $request->post( $attribute ) ) ) {
-				$update_attribute_value[ $attribute ] = $request->post( $attribute );
+			if ( ! is_null( yii::$app->request->post( $attribute ) ) ) {
+				$update_attribute_value[ $attribute ] = yii::$app->request->post( $attribute );
 			}
 		}
 
@@ -658,7 +652,7 @@ class RadCrudController extends Controller {
 			$errors[] = yii::t( 'radtools', 'No fields found to update.' );
 		} else {
 			// Update the fields for all the selected records (pks)
-			$pks = explode( ',', $request->post( 'pks' ) );
+			$pks = explode( ',', yii::$app->request->post( 'pks' ) );
 			foreach ( $pks as $id ) {
 				$this->findModel( (int) $id, false );
 
@@ -802,6 +796,16 @@ class RadCrudController extends Controller {
 	 *
 	 * @return false|int|string int = amount of deletes, false or string is failure
 	 */
+	public function saveFormModel() {
+		return $this->model->load( yii::$app->request->post() ) &&
+		       $this->model->save();
+	}
+
+	/**
+	 * Delete current model
+	 *
+	 * @return false|int|string int = amount of deletes, false or string is failure
+	 */
 	public function deleteModel() {
 		try {
 			return $this->model->delete();
@@ -860,39 +864,36 @@ class RadCrudController extends Controller {
 		bool $persist_page = false,
 		bool $persist_order = false
 	) {
-		$request = yii::$app->request;
-		$session = yii::$app->session;
-
 		// Setup persistence parameters
 		$session_key      = $this->dataProviderSessionKey() . $grid_id;
-		$persistent_reset = $request->get( $grid_id . self::$grid_persistent_reset_param, false );
+		$persistent_reset = yii::$app->request->get( $grid_id . self::$grid_persistent_reset_param, false );
 
 		if ( $persist_filters ) {
 			// Setup persistent filtering
 			if ( $persistent_reset ) {
 				// Clear query filters on filter reset
-				$session->remove( $session_key . '_filters' );
+				yii::$app->session->remove( $session_key . '_filters' );
 
 				Yii::debug( 'Persistent filters reset', __METHOD__ );
-			} elseif ( ! $request->get( $searchModel->formName(), false ) ) {
+			} elseif ( ! yii::$app->request->get( $searchModel->formName(), false ) ) {
 				// If no filters set in query, load persisted filters from session into search model
-				$searchModel->setAttributes( $session->get( $session_key . '_filters', [] ) );
+				$searchModel->setAttributes( yii::$app->session->get( $session_key . '_filters', [] ) );
 
 				Yii::debug( 'Persistent filters read from session', __METHOD__ );
 			} else {
 				// If filtering changed, remove page persistence
-				$session->remove( $session_key . '_page' );
+				yii::$app->session->remove( $session_key . '_page' );
 
 				Yii::debug( 'Persistent filters changed, clear persistent page', __METHOD__ );
 			}
 		}
 
 		// Create dataProvider
-		$dataProvider = $searchModel->search( $request->queryParams );
+		$dataProvider = $searchModel->search( yii::$app->request->queryParams );
 
 		// Persist query filters from search
 		if ( $persist_filters ) {
-			$session->set( $session_key . '_filters', $searchModel->getAttributes() );
+			yii::$app->session->set( $session_key . '_filters', $searchModel->getAttributes() );
 		}
 
 		// Apply default filters if provided
@@ -908,17 +909,17 @@ class RadCrudController extends Controller {
 		if ( $persist_page ) {
 			if ( $persistent_reset ) {
 				// Reset parameter
-				$session->remove( $session_key . '_page' );
+				yii::$app->session->remove( $session_key . '_page' );
 
 				Yii::debug( 'Persistent page reset', __METHOD__ );
 			}
 
 			// Get page number from query
-			$page_number = $request->get( $dataProvider->pagination->pageParam, false );
+			$page_number = yii::$app->request->get( $dataProvider->pagination->pageParam, false );
 
 			// If page_number is not in query, use persisted page selection
 			if ( $page_number === false ) {
-				$page_number = $session->get( $session_key . '_page', 0 );
+				$page_number = yii::$app->session->get( $session_key . '_page', 0 );
 				if ( $page_number <= $dataProvider->pagination->pageCount ) {
 					$dataProvider->pagination->page = $page_number;
 
@@ -927,27 +928,27 @@ class RadCrudController extends Controller {
 			}
 
 			// Set page number and persist it
-			$session->set( $session_key . '_page', $page_number );
+			yii::$app->session->set( $session_key . '_page', $page_number );
 		}
 
 		// Persistent sorting
 		if ( $persist_order ) {
 			if ( $persistent_reset ) {
 				// Reset parameter
-				$session->remove( $session_key . '_sorting' );
+				yii::$app->session->remove( $session_key . '_sorting' );
 
 				Yii::debug( 'Persistent order reset', __METHOD__ );
 			}
 
 			// If no current order, use persisted order
 			if ( ! $dataProvider->sort->getAttributeOrders() ) {
-				$dataProvider->sort->setAttributeOrders( $session->get( $session_key . '_sorting', [] ) );
+				$dataProvider->sort->setAttributeOrders( yii::$app->session->get( $session_key . '_sorting', [] ) );
 
 				Yii::debug( 'Persistent order read from session', __METHOD__ );
 			}
 
 			// Persist the current ordering
-			$session->set( $session_key . '_sorting', $dataProvider->sort->getAttributeOrders() );
+			yii::$app->session->set( $session_key . '_sorting', $dataProvider->sort->getAttributeOrders() );
 		}
 
 		return $dataProvider;
@@ -1203,10 +1204,8 @@ class RadCrudController extends Controller {
 		string $modal_title,
 		string $modal_footer
 	) {
-		$request = yii::$app->request;
-
 		// Ajax Crud modal request
-		if ( $request->isAjax && ! $request->isPjax ) {
+		if ( yii::$app->request->isAjax && ! yii::$app->request->isPjax ) {
 			// Ajax request
 			yii::$app->response->format = Response::FORMAT_JSON;
 
@@ -1241,13 +1240,11 @@ class RadCrudController extends Controller {
 		string $message,
 		$default_return_url
 	) {
-		$request = yii::$app->request;
-
 		// Determine return_url
-		$return_url = $request->get( 'return_url', $default_return_url );
+		$return_url = yii::$app->request->get( 'return_url', $default_return_url );
 
 		// Ajax Crud modal request
-		if ( $request->isAjax && ! $request->isPjax ) {
+		if ( yii::$app->request->isAjax && ! yii::$app->request->isPjax ) {
 			// Ajax request
 			yii::$app->response->format = Response::FORMAT_JSON;
 
@@ -1315,12 +1312,8 @@ class RadCrudController extends Controller {
 		$default_return_url = [ 'index' ],
 		array $errors = []
 	) {
-		$request = yii::$app->request;
-		$response = yii::$app->response;
-		$session = yii::$app->session;
-
 		// Determine return_url
-		$return_url = $request->get('return_url', $default_return_url);
+		$return_url = yii::$app->request->get('return_url', $default_return_url);
 
 		// Parse errors in a string
 		$error_string = $errors ?
@@ -1328,9 +1321,9 @@ class RadCrudController extends Controller {
 			Html::ul( $errors, [ 'encode' => false, ] ) :
 			null;
 
-		if ( $request->isAjax && ! $request->isPjax ) {
+		if ( yii::$app->request->isAjax && ! yii::$app->request->isPjax ) {
 			// Ajax request
-			$response->format = Response::FORMAT_JSON;
+			yii::$app->response->format = Response::FORMAT_JSON;
 
 			$return_view = is_array( $return_url ) ? $return_url[0] : $return_url;
 
@@ -1349,14 +1342,14 @@ class RadCrudController extends Controller {
 			} else {
 				// Prepare error and message flashes
 				if ( $message ) {
-					$session->setFlash( 'alert', [
+					yii::$app->session->setFlash( 'alert', [
 						'body'    => $message,
 						'options' => [ 'class' => 'alert-success' ],
 					] );
 				}
 
 				if ( $error_string ) {
-					$session->setFlash( 'alert', [
+					yii::$app->session->setFlash( 'alert', [
 						'body'    => $error_string,
 						'options' => [ 'class' => 'alert-danger' ],
 					] );
@@ -1371,14 +1364,14 @@ class RadCrudController extends Controller {
 
 		// Prepare error and message flashes
 		if ( $message ) {
-			$session->setFlash( 'alert', [
+			yii::$app->session->setFlash( 'alert', [
 				'body'    => $message,
 				'options' => [ 'class' => 'alert-success' ],
 			] );
 		}
 
 		if ( $error_string ) {
-			$session->setFlash( 'alert', [
+			yii::$app->session->setFlash( 'alert', [
 				'body'    => $error_string,
 				'options' => [ 'class' => 'alert-danger' ],
 			] );
