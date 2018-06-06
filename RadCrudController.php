@@ -589,7 +589,6 @@ class RadCrudController extends Controller {
 							'model_object_name' => $this->getModelObjectName(),
 							'result'            => $delete_result,
 						] );
-
 				}
 				// General error
 				else {
