@@ -258,7 +258,7 @@ class RadHierarchyLinkController extends RadCrudController {
 						// Find field references in url
 						preg_match_all( '/\{(.*?)\}/', $breadcrumb['url'], $replacements );
 						foreach ( $replacements[0] as $key => $replacement ) {
-							if ( count( $replacement ) > 0 ) {
+							if ( count( $replacements ) > 0 ) {
 								// Replace reference '{<fieldname>}' with value from model
 								$breadcrumb['url'] = strtr( $breadcrumb['url'],
 									[
